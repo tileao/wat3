@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wac6800-allprofiles-v4';
+const CACHE_NAME = 'wac6800-allprofiles-v4-fixed';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v4',
+  './app.js?v=allprofiles-v4-fixed',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
