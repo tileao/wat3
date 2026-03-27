@@ -1,3 +1,7 @@
+Build v16.2
+
+Confined Area: Supplement 50 only.
+
 # WAC 6800 Unified
 
 Perfis integrados:
@@ -71,12 +75,3 @@ Visual fix v14.0: Figure 4D-4 now uses direct page-scale placement derived from 
 ## v15 - confined standard display uses merged visual curves
 - A visualização do Confined Standard agora projeta na carta exibida as curvas ativas da costura geométrica, em vez de reutilizar diretamente a família crua do Supplement 12.
 - Isso corrige o desalinhamento dos casos próximos à transição, como 0 / 30 / 6380 e 0 / 33 / 6500, sem alterar o motor de cálculo.
-
-
-## v16 - Confined somente Supplement 50
-- Removida a costura ativa e a seleção 6400/6800 do fluxo Confined.
-- Confined Standard, EAPS OFF, EAPS ON e IBF agora usam apenas as cartas do Supplement 50 no cálculo e na visualização.
-- As cartas do Supplement 12 permanecem apenas como referência fora do fluxo ativo.
-
-
-Build v16.1: corrigida regressão que removia a inicialização do cálculo/eventos do app.
