@@ -16,3 +16,7 @@ Ajuste v3: páginas raster do RFM dos perfis Clear Area regeneradas diretamente 
 
 ## Build note
 This v4-fixed rebuild refactors Figure 4-4 (Confined Area Standard) from the PDF source while preserving the stable v3 app structure.
+
+## Build note
+This v5 build fixes the confined IBF interpolation edge case near 0 ft and reanchors Figure 4-6 (Confined Area EAPS ON) to the calibrated page placement used by the PDF-derived chart frame.
+

@@ -281,7 +281,34 @@ function interp1(x, xp, fp) { if (xp.length !== fp.length || xp.length === 0) re
 function formatKg(v) { return `${Math.round(v).toLocaleString('pt-BR')} kg`; }
 function toPoints(rawPoints) { return rawPoints.map(([x, y]) => ({ x, y })); }
 function roundToFive(value) { return Math.round(value / 5) * 5; }
-function xAtY(points, y) { const intersections = []; for (let i = 0; i < points.length - 1; i++) { const p1 = points[i], p2 = points[i + 1]; const yMin = Math.min(p1.y, p2.y), yMax = Math.max(p1.y, p2.y); if (Math.abs(y - p1.y) < 0.001) intersections.push(p1.x); if (Math.abs(y - p2.y) < 0.001) intersections.push(p2.x); if (y >= yMin - 0.001 && y <= yMax + 0.001 && Math.abs(p2.y - p1.y) > 0.0001) { const t = (y - p1.y) / (p2.y - p1.y); if (t >= -0.001 && t <= 1.001) intersections.push(p1.x + t * (p2.x - p1.x)); } } if (!intersections.length) return NaN; return Math.max(...intersections); }
+function xAtY(points, y) {
+  const intersections = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i], p2 = points[i + 1];
+    const yMin = Math.min(p1.y, p2.y), yMax = Math.max(p1.y, p2.y);
+    if (Math.abs(y - p1.y) < 0.001) intersections.push(p1.x);
+    if (Math.abs(y - p2.y) < 0.001) intersections.push(p2.x);
+    if (y >= yMin - 0.001 && y <= yMax + 0.001 && Math.abs(p2.y - p1.y) > 0.0001) {
+      const t = (y - p1.y) / (p2.y - p1.y);
+      if (t >= -0.001 && t <= 1.001) intersections.push(p1.x + t * (p2.x - p1.x));
+    }
+  }
+  if (intersections.length) return Math.max(...intersections);
+  if (points.length >= 2) {
+    const endpointTolerance = 1.25;
+    const extrapolationSlack = 0.35;
+    const tryEndpointSegment = (a, b) => {
+      if (Math.abs(b.y - a.y) <= 0.0001) return;
+      if (Math.abs(y - a.y) > endpointTolerance && Math.abs(y - b.y) > endpointTolerance) return;
+      const t = (y - a.y) / (b.y - a.y);
+      if (t >= -extrapolationSlack && t <= 1 + extrapolationSlack) intersections.push(a.x + t * (b.x - a.x));
+    };
+    tryEndpointSegment(points[0], points[1]);
+    tryEndpointSegment(points[points.length - 2], points[points.length - 1]);
+  }
+  if (!intersections.length) return NaN;
+  return Math.max(...intersections);
+}
 
 function std_xToKg(x) { const m = OFFSHORE_STANDARD_EXACT.main; return m.kgMin + ((x - m.xMin) / (m.xMax - m.xMin)) * (m.kgMax - m.kgMin); }
 function std_kgToX(kg) { const m = OFFSHORE_STANDARD_EXACT.main; return m.xMin + ((kg - m.kgMin) / (m.kgMax - m.kgMin)) * (m.xMax - m.xMin); }
@@ -406,10 +433,49 @@ function renderGenericNoHeadwindPdfPage(result, options, pageImage, profile, dat
   }
   return exportCanvas;
 }
+function renderGenericNoHeadwindPlacedPage(result, options, pageImage, profile, data, placement) {
+  if(!pageImage.complete || !pageImage.naturalWidth) return null;
+  const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false;
+  const baseWidth=pageImage.naturalWidth, baseHeight=pageImage.naturalHeight, footerExtra=includeFooter?190:0;
+  const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra;
+  const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(pageImage,0,0);
+  if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); }
+  const pxX=(x)=>placement.offsetX + (x * placement.scaleX);
+  const pxY=(y)=>placement.offsetY + (y * placement.scaleY);
+  if(result && !result.error){
+    const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447';
+    const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); };
+    const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); };
+    drawPolyline(result.noWind.lowerCurve, amber, 3);
+    if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve, amber, 3);
+    const paY=result.noWind.paY, currentActualX=genericPdfChartKgToX(data, result.actualWeightKg), currentMaxX=genericPdfChartKgToX(data, result.maxWeight), maxX=result.noWind.noWindX;
+    ex.save();
+    ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(data.main.xMin),pxY(paY)); ex.lineTo(pxX(data.main.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]);
+    ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(data.main.yBottomFt)); ex.lineTo(pxX(currentActualX),pxY(paY)); ex.stroke();
+    ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(data.main.yBottomFt)); ex.lineTo(pxX(currentMaxX),pxY(paY)); ex.stroke();
+    ex.restore();
+    const dotRadius=includeFooter?5.5:4.5;
+    marker(maxX,paY,'#ffffff',dotRadius+1);
+    marker(currentActualX,paY,blue,dotRadius);
+    marker(currentActualX,data.main.yBottomFt,blue,dotRadius-0.5);
+    marker(currentMaxX,data.main.yBottomFt,withinColor,dotRadius);
+    if(includeSummaryBox){
+      const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168;
+      ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke();
+      ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(profile.previewTitle,boxX+22,boxY+(compactSummaryBox?38:40));
+      ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif';
+      if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${profile.procedureLabel} | Configuration: ${profile.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg`,boxX+22,boxY+106); ex.fillText(`Max ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); }
+      else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C`,boxX+22,boxY+76); ex.fillText(`Max ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); }
+      ex.restore();
+    }
+    if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Issue 2, Rev. 32.',80,legendY+50); ex.fillText(profile.figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); }
+  }
+  return exportCanvas;
+}
 function renderClearStandardAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPdfPage(result, options, clearStandardPageImage, PROFILE_MAP.clear_standard, CLEAR_STANDARD_EXACT); }
 function renderClearEapsOffAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPdfPage(result, options, clearEapsOffPageImage, PROFILE_MAP.clear_eaps_off, CLEAR_EAPS_OFF_EXACT); }
 function renderClearEapsOnAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPdfPage(result, options, clearEapsOnPageImage, PROFILE_MAP.clear_eaps_on, CLEAR_EAPS_ON_EXACT); }
-function renderConfinedEapsOnAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPdfPage(result, options, confinedEapsOnPageImage, PROFILE_MAP.confined_eaps_on, CONFINED_EAPS_ON_EXACT); }
+function renderConfinedEapsOnAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPlacedPage(result, options, confinedEapsOnPageImage, PROFILE_MAP.confined_eaps_on, CONFINED_EAPS_ON_EXACT, EAPS_PAGE_PLACEMENT); }
 function getRenderableProfile(profile) { return profile && typeof profile.render === 'function' ? profile : null; }
 function resetPendingState() { statusCard.className='card status neutral'; statusBadge.textContent='AGUARDANDO DADOS'; statusTitle.textContent='Envelope check'; statusText.textContent='Selecione procedure, configuration e preencha altitude, OAT e peso atual.'; maxWeightEl.textContent='—'; marginEl.textContent='—'; currentResult=null; drawOverlay(); }
 function showUncalibratedProfileState() { statusCard.className='card status neutral'; statusBadge.textContent='PERFIL NÃO CALIBRADO'; statusTitle.textContent='Modo ainda não calibrado'; statusText.textContent='O perfil selecionado ainda não possui motor de cálculo calibrado nesta build.'; maxWeightEl.textContent='—'; marginEl.textContent='—'; currentResult=null; drawOverlay(); }
