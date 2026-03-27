@@ -33,3 +33,14 @@ This v5 build fixes the confined IBF interpolation edge case near 0 ft and reanc
 - O perfil Confined Standard agora usa uma curva unificada entre Supplement 12 e Supplement 50.
 - A costura é feita em 6400 kg: a carta baixa alimenta o trecho até 6400 e a carta alta continua acima desse ponto.
 - A seleção da página exibida continua simples: até 6400 mostra o Supplement 12; acima de 6400 mostra o Supplement 50.
+
+
+## v9 - ajuste visual do Supplement 12 (Confined Standard)
+- correção do overlay da carta Figure 4D-4 com placement calibrado a partir da conferência visual
+- sem mudança no cálculo do motor de costura
+
+
+## v10 - correção de visualização híbrida no Confined Standard
+
+- Mantém o cálculo costurado em 6400 kg entre Supplement 12 e Supplement 50.
+- Corrige a escolha da carta exibida no caso híbrido: a visualização agora segue o peso consultado, evitando overlay quebrado quando o cálculo costurado retorna max acima de 6400 kg para um peso atual abaixo de 6400 kg.
