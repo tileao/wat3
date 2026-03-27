@@ -28,7 +28,7 @@ This v5 build fixes the confined IBF interpolation edge case near 0 ft and reanc
 - Os perfis Confined agora usam seleção automática entre a família 6400 e a família 6800.
 - Nesta primeira etapa, a família 6400 entra como fonte preferencial até 6400 kg e como fallback para fechar buracos quando a família 6800 falha.
 
-## v7 - costura geométrica em 6400 (Confined Standard)
+## v8 - costura geométrica em 6400 (Confined Standard)
 
 - O perfil Confined Standard agora usa uma curva unificada entre Supplement 12 e Supplement 50.
 - A costura é feita em 6400 kg: a carta baixa alimenta o trecho até 6400 e a carta alta continua acima desse ponto.
