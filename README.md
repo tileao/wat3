@@ -73,8 +73,7 @@ Visual fix v14.0: Figure 4D-4 now uses direct page-scale placement derived from 
 - Isso corrige o desalinhamento dos casos próximos à transição, como 0 / 30 / 6380 e 0 / 33 / 6500, sem alterar o motor de cálculo.
 
 
-## v16 - costura geométrica estendida para todo o Confined
-- Confined Standard, EAPS OFF, EAPS ON e IBF passam a usar o mesmo motor de costura geométrica entre Supplement 12 e Supplement 50.
-- A seleção de família deixa de depender apenas do peso consultado e passa a seguir o limite interpolado por temperatura/altitude.
-- A carta exibida agora é escolhida para manter, sempre que possível, o peso atual e o peso máximo no mesmo frame.
-- Casos de transição como 6300-6500 kg e OAT 20-35°C ficam mais estáveis, inclusive quando a ancoragem térmica usa uma temperatura do Supp 50 e a seguinte do Supp 12.
+## v16 - Confined somente Supplement 50
+- Removida a costura ativa e a seleção 6400/6800 do fluxo Confined.
+- Confined Standard, EAPS OFF, EAPS ON e IBF agora usam apenas as cartas do Supplement 50 no cálculo e na visualização.
+- As cartas do Supplement 12 permanecem apenas como referência fora do fluxo ativo.
