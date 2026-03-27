@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wac6800-allprofiles-v16-0-confined-merged';
+const CACHE_NAME = 'wac6800-allprofiles-v17-0-confined-mergefix-audit';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v16_0-confined-merged',
+  './app.js?v=allprofiles-v17_0-confined-mergefix-audit',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
