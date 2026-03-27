@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wac6800-allprofiles-v5-confined-fixes';
+const CACHE_NAME = 'wac6800-allprofiles-v6-confined6400-start';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v5-confined-fixes',
+  './app.js?v=allprofiles-v6-confined6400-start',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
@@ -31,7 +31,17 @@ const APP_ASSETS = [
   './docs/page-11.png',
   './docs/page-04.png',
   './docs/page-05.png',
-  './docs/page-12.png'
+  './docs/page-12.png',
+
+  './data/confined-standard-6400-exact.json',
+  './data/confined-eapsoff-6400-exact.json',
+  './data/confined-eapson-6400-exact.json',
+  './data/confined-ibf-6400-exact.json',
+  './docs/Confined 6400 charts.pdf',
+  './docs/page-13.png',
+  './docs/page-14.png',
+  './docs/page-15.png',
+  './docs/page-16.png',
 ];
 
 self.addEventListener('install', (event) => {

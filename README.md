@@ -20,3 +20,10 @@ This v4-fixed rebuild refactors Figure 4-4 (Confined Area Standard) from the PDF
 ## Build note
 This v5 build fixes the confined IBF interpolation edge case near 0 ft and reanchors Figure 4-6 (Confined Area EAPS ON) to the calibrated page placement used by the PDF-derived chart frame.
 
+
+
+## v6 - início da integração Confined 6400
+
+- Adicionadas as cartas do Supplement 12 para Confined: Standard, EAPS OFF, EAPS ON e IBF.
+- Os perfis Confined agora usam seleção automática entre a família 6400 e a família 6800.
+- Nesta primeira etapa, a família 6400 entra como fonte preferencial até 6400 kg e como fallback para fechar buracos quando a família 6800 falha.
