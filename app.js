@@ -384,6 +384,50 @@ function mergedConfinedNoWindLimit(lowData, highData, paFt, oat, label, cutoffKg
   };
 }
 
+
+function clipPhysicalCurveToDisplay(points, minKg, maxKg) {
+  if (!points || !points.length) return [];
+  let clipped = points.map((p) => ({ ...p }));
+  if (Number.isFinite(minKg)) clipped = trimPhysicalCurveAtKg(clipped, minKg, 'high');
+  if (Number.isFinite(maxKg)) {
+    const reversed = trimPhysicalCurveAtKg([...clipped].reverse(), maxKg, 'high').reverse();
+    clipped = reversed;
+  }
+  return clipped;
+}
+function physicalCurveToPageCurve(data, physicalCurve) {
+  return (physicalCurve || []).map((point) => ({
+    x: genericPdfChartKgToX(data, point.x),
+    y: genericPdfChartPaToY(data, point.y)
+  }));
+}
+function buildConfinedStandardDisplayNoWind(mergedNoWind, chartFamily, paFt) {
+  const displayData = chartFamily === '6400' ? CONFINED_STANDARD_6400_EXACT : CONFINED_STANDARD_EXACT;
+  const displayMinKg = displayData.main.kgMin;
+  const displayMaxKg = displayData.main.kgMax;
+  const selectDisplayCurve = (temp, sourceFamily) => {
+    const sourceData = sourceFamily === '6800' ? CONFINED_STANDARD_EXACT : CONFINED_STANDARD_6400_EXACT;
+    const raw = sourceData.tempCurves[String(temp)];
+    if (!raw) return [];
+    const physical = genericCurveToPhysical(sourceData, raw);
+    const clipped = clipPhysicalCurveToDisplay(physical, displayMinKg, displayMaxKg);
+    return physicalCurveToPageCurve(displayData, clipped);
+  };
+  const lowerFamily = mergedNoWind.lowerSourceKg?.family || (chartFamily === '6800' ? '6800' : '6400');
+  const upperFamily = mergedNoWind.upperSourceKg?.family || lowerFamily;
+  return {
+    paY: genericPdfChartPaToY(displayData, paFt),
+    lowerTemp: mergedNoWind.lowerTemp,
+    upperTemp: mergedNoWind.upperTemp,
+    lowerX: genericPdfChartKgToX(displayData, mergedNoWind.lowerKg),
+    upperX: genericPdfChartKgToX(displayData, mergedNoWind.upperKg),
+    noWindX: genericPdfChartKgToX(displayData, mergedNoWind.noWindKg),
+    noWindKg: mergedNoWind.noWindKg,
+    lowerCurve: selectDisplayCurve(mergedNoWind.lowerTemp, lowerFamily),
+    upperCurve: selectDisplayCurve(mergedNoWind.upperTemp, upperFamily)
+  };
+}
+
 function calculateExactClearStandard(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CLEAR_STANDARD_EXACT, paFt, oat, 'Figure 4-1'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CLEAR_STANDARD_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'clear_standard', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
 function calculateExactClearEapsOff(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CLEAR_EAPS_OFF_EXACT, paFt, oat, 'Figure 4-2'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CLEAR_EAPS_OFF_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'clear_eaps_off', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
 function calculateExactClearEapsOn(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CLEAR_EAPS_ON_EXACT, paFt, oat, 'Figure 4-3'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CLEAR_EAPS_ON_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'clear_eaps_on', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
@@ -757,9 +801,7 @@ function calculateExactConfinedStandard(paFt,oat,actualWeightKg,headwindKt) {
   const maxWeight = roundToFive(Math.min(CONFINED_STANDARD_EXACT.main.kgMax, mergedNoWind.noWindKg));
   const margin = maxWeight - actualWeightKg;
   const chartFamily = actualWeightKg <= 6400 ? '6400' : '6800';
-  const displayNoWind = chartFamily === '6400'
-    ? (!lowNoWind.error ? lowNoWind : highNoWind)
-    : (!highNoWind.error ? highNoWind : lowNoWind);
+  const displayNoWind = buildConfinedStandardDisplayNoWind(mergedNoWind, chartFamily, paFt);
   return {
     profileId:'confined_standard',
     exact:true,

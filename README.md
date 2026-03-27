@@ -66,3 +66,8 @@ This v5 build fixes the confined IBF interpolation edge case near 0 ft and reanc
 
 
 Visual fix v14.0: Figure 4D-4 now uses direct page-scale placement derived from the natural size of page-13.png.
+
+
+## v15 - confined standard display uses merged visual curves
+- A visualização do Confined Standard agora projeta na carta exibida as curvas ativas da costura geométrica, em vez de reutilizar diretamente a família crua do Supplement 12.
+- Isso corrige o desalinhamento dos casos próximos à transição, como 0 / 30 / 6380 e 0 / 33 / 6500, sem alterar o motor de cálculo.
