@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wac6800-allprofiles-v11.1-confined-standard-stitched-visual';
+const CACHE_NAME = 'wac6800-allprofiles-v14-0-sup12-align';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v11.1-confined-standard-stitched-visual',
+  './app.js?v=allprofiles-v14_0-sup12-align',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',

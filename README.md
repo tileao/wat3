@@ -50,3 +50,19 @@ This v5 build fixes the confined IBF interpolation edge case near 0 ft and reanc
 - Confined Standard mantém cálculo auditado nas cartas originais.
 - Visualização passa a usar a carta unificada costurada quando o perfil Confined Standard precisa de leitura contínua através da transição 6400/6800.
 - Novo asset: docs/page-17.png
+
+
+## v13
+- Corrige o alinhamento visual da Figure 4D-4 (Supplement 12) com placement dedicado baseado na posição real do crop na página.
+- Mantém cálculo e costura do Confined Standard inalterados.
+
+## v12
+- Confined Standard / Supplement 12 (Figure 4D-4): alinhamento visual do overlay passou a usar mapeamento direto da página PDF em vez do placement calibrado.
+- Mantém o cálculo inalterado; ajuste apenas de visualização para casos como 0/30/6380.
+
+
+## v13.1
+- Adiciona marcador visual discreto da versão da build no topo da página para facilitar a validação de cache/carregamento no iPhone.
+
+
+Visual fix v14.0: Figure 4D-4 now uses direct page-scale placement derived from the natural size of page-13.png.
