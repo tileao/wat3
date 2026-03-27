@@ -44,3 +44,9 @@ This v5 build fixes the confined IBF interpolation edge case near 0 ft and reanc
 
 - Mantém o cálculo costurado em 6400 kg entre Supplement 12 e Supplement 50.
 - Corrige a escolha da carta exibida no caso híbrido: a visualização agora segue o peso consultado, evitando overlay quebrado quando o cálculo costurado retorna max acima de 6400 kg para um peso atual abaixo de 6400 kg.
+
+
+## v11
+- Confined Standard mantém cálculo auditado nas cartas originais.
+- Visualização passa a usar a carta unificada costurada quando o perfil Confined Standard precisa de leitura contínua através da transição 6400/6800.
+- Novo asset: docs/page-17.png

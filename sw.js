@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wac6800-allprofiles-v10-confined-standard-displayfamily';
+const CACHE_NAME = 'wac6800-allprofiles-v11-confined-standard-stitched-visual';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v10-confined-standard-displayfamily',
+  './app.js?v=allprofiles-v11-confined-standard-stitched-visual',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
@@ -42,6 +42,7 @@ const APP_ASSETS = [
   './docs/page-14.png',
   './docs/page-15.png',
   './docs/page-16.png',
+  './docs/page-17.png',
 ];
 
 self.addEventListener('install', (event) => {
