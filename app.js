@@ -269,9 +269,89 @@ function loadDemo() { procedureEl.value = 'offshore'; configurationEl.value = 's
 function genericPdfChartXToKg(data, x) { const m = data.main; return m.kgMin + ((x - m.xMin) / (m.xMax - m.xMin)) * (m.kgMax - m.kgMin); }
 function genericPdfChartKgToX(data, kg) { const m = data.main; return m.xMin + ((kg - m.kgMin) / (m.kgMax - m.kgMin)) * (m.xMax - m.xMin); }
 function genericPdfChartPaToY(data, paFt) { const m = data.main; const pa = clamp(paFt, m.yMinFt, m.yMaxFt); return m.yTopFt + ((m.yMaxFt - pa) / (m.yMaxFt - m.yMinFt)) * (m.yBottomFt - m.yTopFt); }
+function genericPdfChartYToPa(data, y) { const m = data.main; return m.yMaxFt - ((y - m.yTopFt) / (m.yBottomFt - m.yTopFt)) * (m.yMaxFt - m.yMinFt); }
 function genericPdfChartTemps(data) { return Object.keys(data.tempCurves).map(Number).sort((a,b)=>a-b); }
 function genericPdfChartCurve(data, temp) { return toPoints(data.tempCurves[String(temp)]); }
 function genericPdfChartNoWindLimit(data, paFt, oat, label) { const temps=genericPdfChartTemps(data); const paY=genericPdfChartPaToY(data, paFt); if(oat<temps[0]||oat>temps[temps.length-1]) return {error:`OAT fora da faixa do ${label} (${temps[0]}°C a ${temps[temps.length-1]}°C).`}; let lower=temps[0], upper=temps[temps.length-1]; for(const t of temps){ if(t<=oat) lower=t; if(t>=oat){ upper=t; break; } } const lowerCurve=genericPdfChartCurve(data, lower), upperCurve=genericPdfChartCurve(data, upper); const lowerX=xAtY(lowerCurve, paY), upperX=xAtY(upperCurve, paY); if(Number.isNaN(lowerX)||Number.isNaN(upperX)) return {error:`O ponto de altitude/OAT saiu da família explícita de curvas do ${label}.`}; let interpolatedX=lowerX; if(lower!==upper){ const t=(oat-lower)/(upper-lower); interpolatedX=lowerX+t*(upperX-lowerX); } return {paY, lowerTemp:lower, upperTemp:upper, lowerCurve, upperCurve, lowerX, upperX, noWindX:interpolatedX, noWindKg:genericPdfChartXToKg(data, interpolatedX)}; }
+function genericCurveToPhysical(data, rawCurve) { return rawCurve.map(([x, y]) => ({ x: genericPdfChartXToKg(data, x), y: genericPdfChartYToPa(data, y) })); }
+function yAtX(points, x) {
+  const intersections = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i], p2 = points[i + 1];
+    const xMin = Math.min(p1.x, p2.x), xMax = Math.max(p1.x, p2.x);
+    if (Math.abs(x - p1.x) < 0.001) intersections.push(p1.y);
+    if (Math.abs(x - p2.x) < 0.001) intersections.push(p2.y);
+    if (x >= xMin - 0.001 && x <= xMax + 0.001 && Math.abs(p2.x - p1.x) > 0.0001) {
+      const t = (x - p1.x) / (p2.x - p1.x);
+      if (t >= -0.001 && t <= 1.001) intersections.push(p1.y + t * (p2.y - p1.y));
+    }
+  }
+  return intersections.length ? Math.min(...intersections) : NaN;
+}
+function trimPhysicalCurveAtKg(points, cutoffKg, side) {
+  const out = [];
+  const keepLow = side === 'low';
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i], p2 = points[i + 1];
+    if ((keepLow && p1.x <= cutoffKg + 0.001) || (!keepLow && p1.x >= cutoffKg - 0.001)) {
+      if (!out.length || Math.abs(out[out.length - 1].x - p1.x) > 0.001 || Math.abs(out[out.length - 1].y - p1.y) > 0.001) out.push({ ...p1 });
+    }
+    if ((p1.x - cutoffKg) * (p2.x - cutoffKg) < 0) {
+      const t = (cutoffKg - p1.x) / (p2.x - p1.x);
+      const y = p1.y + t * (p2.y - p1.y);
+      if (!out.length || Math.abs(out[out.length - 1].x - cutoffKg) > 0.001 || Math.abs(out[out.length - 1].y - y) > 0.001) out.push({ x: cutoffKg, y });
+    }
+  }
+  const endpointY = yAtX(points, cutoffKg);
+  if (!Number.isNaN(endpointY)) {
+    if (keepLow) {
+      if (!out.length || Math.abs(out[out.length - 1].x - cutoffKg) > 0.001 || Math.abs(out[out.length - 1].y - endpointY) > 0.001) out.push({ x: cutoffKg, y: endpointY });
+    } else {
+      if (!out.length || Math.abs(out[0].x - cutoffKg) > 0.001 || Math.abs(out[0].y - endpointY) > 0.001) out.unshift({ x: cutoffKg, y: endpointY });
+    }
+  }
+  return out;
+}
+function buildMergedConfinedPhysicalCurve(lowData, highData, temp, cutoffKg = 6400) {
+  const lowRaw = lowData.tempCurves[String(temp)];
+  const highRaw = highData.tempCurves[String(temp)];
+  if (!lowRaw || !highRaw) return [];
+  const lowPhysical = trimPhysicalCurveAtKg(genericCurveToPhysical(lowData, lowRaw), cutoffKg, 'low');
+  const highPhysical = trimPhysicalCurveAtKg(genericCurveToPhysical(highData, highRaw), cutoffKg, 'high');
+  if (!highPhysical.length) return lowPhysical;
+  if (!lowPhysical.length) return highPhysical;
+  const firstHigh = highPhysical.find((point) => point.x >= cutoffKg - 0.001) || highPhysical[0];
+  const bridgePoint = { x: cutoffKg, y: firstHigh.y };
+  const merged = [...lowPhysical];
+  const lastLow = merged[merged.length - 1];
+  if (!lastLow || Math.abs(lastLow.x - bridgePoint.x) > 0.001 || Math.abs(lastLow.y - bridgePoint.y) > 0.001) merged.push(bridgePoint);
+  for (const point of highPhysical) {
+    const last = merged[merged.length - 1];
+    if (!last || Math.abs(last.x - point.x) > 0.001 || Math.abs(last.y - point.y) > 0.001) merged.push({ ...point });
+  }
+  return merged;
+}
+function mergedConfinedNoWindLimit(lowData, highData, paFt, oat, label, cutoffKg = 6400) {
+  const temps = [...new Set([...genericPdfChartTemps(lowData), ...genericPdfChartTemps(highData)])].sort((a, b) => a - b);
+  if (oat < temps[0] || oat > temps[temps.length - 1]) return { error: `OAT fora da faixa do ${label} (${temps[0]}°C a ${temps[temps.length - 1]}°C).` };
+  let lower = temps[0], upper = temps[temps.length - 1];
+  for (const t of temps) {
+    if (t <= oat) lower = t;
+    if (t >= oat) { upper = t; break; }
+  }
+  const lowerCurve = buildMergedConfinedPhysicalCurve(lowData, highData, lower, cutoffKg);
+  const upperCurve = buildMergedConfinedPhysicalCurve(lowData, highData, upper, cutoffKg);
+  const lowerKg = xAtY(lowerCurve, paFt);
+  const upperKg = xAtY(upperCurve, paFt);
+  if (Number.isNaN(lowerKg) || Number.isNaN(upperKg)) return { error: `O ponto de altitude/OAT saiu da família costurada do ${label}.` };
+  let noWindKg = lowerKg;
+  if (lower !== upper) {
+    const t = (oat - lower) / (upper - lower);
+    noWindKg = lowerKg + t * (upperKg - lowerKg);
+  }
+  return { lowerTemp: lower, upperTemp: upper, lowerKg, upperKg, noWindKg, cutoffKg };
+}
+
 function calculateExactClearStandard(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CLEAR_STANDARD_EXACT, paFt, oat, 'Figure 4-1'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CLEAR_STANDARD_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'clear_standard', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
 function calculateExactClearEapsOff(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CLEAR_EAPS_OFF_EXACT, paFt, oat, 'Figure 4-2'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CLEAR_EAPS_OFF_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'clear_eaps_off', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
 function calculateExactClearEapsOn(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CLEAR_EAPS_ON_EXACT, paFt, oat, 'Figure 4-3'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CLEAR_EAPS_ON_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'clear_eaps_on', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
@@ -635,10 +715,32 @@ function chooseConfinedResult(profileId, actualWeightKg, preferredResult, fallba
 }
 
 function calculateExactConfinedStandard(paFt,oat,actualWeightKg,headwindKt) {
+  const lowNoWind = genericPdfChartNoWindLimit(CONFINED_STANDARD_6400_EXACT, paFt, oat, 'Figure 4D-4');
   const highNoWind = confinedstd_getNoWindLimit(paFt,oat);
-  const high = highNoWind.error ? highNoWind : buildConfinedResult('confined_standard', highNoWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-4', 'Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.');
-  const low = calculateConfined6400('confined_standard', CONFINED_STANDARD_6400_EXACT, 'Figure 4D-4 — Confined Area Heliport Procedure Weight Limitations.', actualWeightKg, paFt, oat);
-  return chooseConfinedResult('confined_standard', actualWeightKg, actualWeightKg <= 6400 ? low : high, actualWeightKg <= 6400 ? high : low, actualWeightKg <= 6400 ? '6400' : '6800');
+  const mergedNoWind = mergedConfinedNoWindLimit(CONFINED_STANDARD_6400_EXACT, CONFINED_STANDARD_EXACT, paFt, oat, 'família Confined Standard', 6400);
+  if (mergedNoWind.error) return chooseConfinedResult('confined_standard', actualWeightKg, highNoWind, lowNoWind, 'stitched-6400');
+  const maxWeight = roundToFive(Math.min(CONFINED_STANDARD_EXACT.main.kgMax, mergedNoWind.noWindKg));
+  const margin = maxWeight - actualWeightKg;
+  const chartFamily = maxWeight > 6400 ? '6800' : '6400';
+  const displayNoWind = chartFamily === '6800' && !highNoWind.error ? highNoWind : (!lowNoWind.error ? lowNoWind : highNoWind);
+  return {
+    profileId:'confined_standard',
+    exact:true,
+    chartFamily,
+    sourceLabel:'Supplement 12 + Supplement 50 (costura geométrica em 6400 kg)',
+    figureLabel: chartFamily === '6800' ? 'Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.' : 'Figure 4D-4 — Confined Area Heliport Procedure Weight Limitations.',
+    noWind: displayNoWind,
+    mergedNoWind,
+    maxWeight,
+    margin,
+    within: margin >= 0,
+    actualWeightKg,
+    paFt,
+    oat,
+    headwindKt:0,
+    referenceHtml: `<strong>Gráfico em uso:</strong> ${chartFamily === '6800' ? 'Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.' : 'Figure 4D-4 — Confined Area Heliport Procedure Weight Limitations.'}<br><strong>Fonte:</strong> Leonardo AW139 RFM - cálculo Confined Standard com costura geométrica entre Supplement 12 e Supplement 50 em 6400 kg.`,
+    resultDescription: 'Resultado calculado com curva unificada Confined Standard, costurada em 6400 kg entre as cartas do Supplement 12 e do Supplement 50.'
+  };
 }
 function calculateExactConfinedEapsOff(paFt,oat,actualWeightKg,headwindKt) {
   const highNoWind = confinedeoff_getNoWindLimit(paFt,oat);
@@ -695,7 +797,7 @@ function syncProfileUi() {
   const ref = activeProfile ? activeProfile.referenceHtml : '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Edition 2, Revision 32.';
   chartReferenceEl.innerHTML = ref;
   chartHintEl.textContent = procedureEl.value === 'offshore' ? 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.' : 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual e peso máximo interpolado no gráfico principal.';
-  formHintEl.textContent = 'Build híbrida: suplemento 6800 kg completo + suplemento 12 (até 6400 kg) integrado aos perfis Confined como fonte complementar para fechar buracos de cálculo.';
+  formHintEl.textContent = 'Build híbrida: suplemento 6800 kg completo + suplemento 12 integrado aos perfis Confined. Nesta rodada, o Confined Standard já usa costura geométrica em 6400 kg entre as duas famílias.';
   chartBaseImage.src = activeProfile ? activeProfile.pageSrc : 'docs/page-07.png';
   chartBaseImage.alt = activeProfile ? activeProfile.previewTitle : 'Página completa do gráfico WAC';
   updatePdfButtonLabel();
