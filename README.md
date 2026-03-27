@@ -77,3 +77,6 @@ Visual fix v14.0: Figure 4D-4 now uses direct page-scale placement derived from 
 - Removida a costura ativa e a seleção 6400/6800 do fluxo Confined.
 - Confined Standard, EAPS OFF, EAPS ON e IBF agora usam apenas as cartas do Supplement 50 no cálculo e na visualização.
 - As cartas do Supplement 12 permanecem apenas como referência fora do fluxo ativo.
+
+
+Build v16.1: corrigida regressão que removia a inicialização do cálculo/eventos do app.

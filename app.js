@@ -643,3 +643,32 @@ function renderCompositeCanvas(result=currentResult) {
   if(!renderableProfile) return null;
   return renderableProfile.render(result,{includeFooter:true,includeSummaryBox:true});
 }
+
+function runCalculation() { syncProfileUi(); const pa=Number(paEl.value), oat=Number(oatEl.value), actualWeight=Number(weightEl.value), headwind=Number(headwindEl.value||0); if([pa,oat,actualWeight].some(Number.isNaN)){ resetPendingState(); return; } if(!activeProfile || typeof activeProfile.calculate !== 'function' || activeProfile.calculate === notCalibratedProfile){ showUncalibratedProfileState(); return; } const result = activeProfile.calculate(pa,oat,actualWeight,headwind); if(result.error){ showRangeError(result); return; } showSuccess(result, activeProfile); }
+
+toggleChart.addEventListener('click',()=>{ chartPanel.classList.toggle('hidden'); toggleChart.textContent=chartPanel.classList.contains('hidden')?'Mostrar gráfico':'Ocultar gráfico'; if(!chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+exportPdfBtn.addEventListener('click', ()=>{ exportInterpolatedPdf(); });
+demoBtn.addEventListener('click', loadDemo);
+runBtn.addEventListener('click', runCalculation);
+procedureEl.addEventListener('change', ()=>{ toggleHeadwind(); syncProfileUi(); currentResult=null; drawOverlay(); runCalculation(); });
+configurationEl.addEventListener('change', ()=>{ syncProfileUi(); currentResult=null; drawOverlay(); runCalculation(); });
+window.addEventListener('beforeinstallprompt',(event)=>{ event.preventDefault(); deferredPrompt=event; installBtn.classList.remove('hidden'); });
+installBtn.addEventListener('click', async ()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; installBtn.classList.add('hidden'); });
+window.addEventListener('appinstalled', ()=>{ installBtn.classList.add('hidden'); });
+chartBaseImage.addEventListener('load', ()=>{ if(!chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+standardPageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===standardPageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+eapsOffPageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===eapsOffPageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+eapsPageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===eapsPageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+ibfPageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===ibfPageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+clearIbfPageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===clearIbfPageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+confinedIbfPageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===confinedIbfPageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+confinedStandardPageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===confinedStandardPageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+confinedEapsOffPageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===confinedEapsOffPageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+confinedEapsOnPageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===confinedEapsOnPageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+window.addEventListener('resize', ()=>{ if(!chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+
+setupAutoAdvance();
+toggleHeadwind();
+syncProfileUi();
+updatePdfButtonLabel();
+drawOverlay();
