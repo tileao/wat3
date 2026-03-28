@@ -252,29 +252,9 @@ const PROFILE_META = {
   confined_ibf: { supplement: 'Supplement 50', page: 'S50-32B' }
 };
 
-const PROFILE_META_CONFINED_6400 = {
-  confined_standard: { supplement: 'Supplement 12', page: 'S12-D32' },
-  confined_eaps_off: { supplement: 'Supplement 12', page: 'S12-D33' },
-  confined_eaps_on: { supplement: 'Supplement 12', page: 'S12-D34' },
-  confined_ibf: { supplement: 'Supplement 12', page: 'S12-D34A' }
-};
-
 function buildReferenceHtml(profile) {
   const meta = PROFILE_META[profile.id] || {};
   return `<strong>Gráfico em uso:</strong> ${profile.figureLabel}<br><strong>Suplemento:</strong> ${meta.supplement || '—'}<br><strong>Página:</strong> ${meta.page || '—'}<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.`;
-}
-
-function buildReferenceHtmlFromMeta(figureLabel, meta = {}) {
-  return `<strong>Gráfico em uso:</strong> ${figureLabel}<br><strong>Suplemento:</strong> ${meta.supplement || '—'}<br><strong>Página:</strong> ${meta.page || '—'}<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.`;
-}
-
-function buildConfinedReferenceHtml(profileId, chartFamily = '6800') {
-  const baseProfile = PROFILE_MAP[profileId];
-  if (!baseProfile) return '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
-  if (chartFamily === '6400' && CONFINED_6400_VARIANTS[profileId]) {
-    return buildReferenceHtmlFromMeta(CONFINED_6400_VARIANTS[profileId].figureLabel, PROFILE_META_CONFINED_6400[profileId] || {});
-  }
-  return buildReferenceHtml(baseProfile);
 }
 
 function getReferenceHtmlByProfileId(profileId) {
@@ -495,30 +475,39 @@ function buildConfinedStandardDisplayNoWind(mergedNoWind, chartFamily, paFt) {
 function calculateExactClearStandard(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CLEAR_STANDARD_EXACT, paFt, oat, 'Figure 4-1'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CLEAR_STANDARD_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'clear_standard', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
 function calculateExactClearEapsOff(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CLEAR_EAPS_OFF_EXACT, paFt, oat, 'Figure 4-2'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CLEAR_EAPS_OFF_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'clear_eaps_off', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
 function calculateExactClearEapsOn(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CLEAR_EAPS_ON_EXACT, paFt, oat, 'Figure 4-3'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CLEAR_EAPS_ON_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'clear_eaps_on', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
-function calculateExactConfinedEapsOn(paFt,oat,actualWeightKg,headwindKt) {
-  if (actualWeightKg <= 6400) {
-    const low = calculateConfined6400('confined_eaps_on', CONFINED_EAPS_ON_6400_EXACT, CONFINED_6400_VARIANTS.confined_eaps_on.figureLabel, actualWeightKg, paFt, oat);
-    if (low?.error) return { ...low, profileId: 'confined_eaps_on', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6400') };
-    return {
-      ...low,
-      referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6400'),
-      resultDescription: 'Resultado calculado com a carta Confined EAPS ON do Supplement 12 para pesos até 6400 kg.'
-    };
+function calculateExactConfinedEapsOn(paFt,oat,actualWeightKg) { const noWind=genericPdfChartNoWindLimit(CONFINED_EAPS_ON_EXACT, paFt, oat, 'Figure 4-6'); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(CONFINED_EAPS_ON_EXACT.main.kgMax, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'confined_eaps_on', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
+function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
+function interp1(x, xp, fp) { if (xp.length !== fp.length || xp.length === 0) return NaN; if (x <= xp[0]) return fp[0]; if (x >= xp[xp.length - 1]) return fp[xp.length - 1]; for (let i = 0; i < xp.length - 1; i++) { if (x >= xp[i] && x <= xp[i + 1]) { const t = (x - xp[i]) / (xp[i + 1] - xp[i]); return fp[i] + t * (fp[i + 1] - fp[i]); } } return fp[fp.length - 1]; }
+function formatKg(v) { return `${Math.round(v).toLocaleString('pt-BR')} kg`; }
+function toPoints(rawPoints) { return rawPoints.map(([x, y]) => ({ x, y })); }
+function roundToFive(value) { return Math.round(value / 5) * 5; }
+function xAtY(points, y) {
+  const intersections = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i], p2 = points[i + 1];
+    const yMin = Math.min(p1.y, p2.y), yMax = Math.max(p1.y, p2.y);
+    if (Math.abs(y - p1.y) < 0.001) intersections.push(p1.x);
+    if (Math.abs(y - p2.y) < 0.001) intersections.push(p2.x);
+    if (y >= yMin - 0.001 && y <= yMax + 0.001 && Math.abs(p2.y - p1.y) > 0.0001) {
+      const t = (y - p1.y) / (p2.y - p1.y);
+      if (t >= -0.001 && t <= 1.001) intersections.push(p1.x + t * (p2.x - p1.x));
+    }
   }
-  const noWind = genericPdfChartNoWindLimit(CONFINED_EAPS_ON_EXACT, paFt, oat, 'Figure 4-6');
-  if (noWind.error) {
-    return {
-      ...noWind,
-      profileId: 'confined_eaps_on',
-      chartFamily: '6800',
-      referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6800')
+  if (intersections.length) return Math.max(...intersections);
+  if (points.length >= 2) {
+    const endpointTolerance = 1.25;
+    const extrapolationSlack = 0.35;
+    const tryEndpointSegment = (a, b) => {
+      if (Math.abs(b.y - a.y) <= 0.0001) return;
+      if (Math.abs(y - a.y) > endpointTolerance && Math.abs(y - b.y) > endpointTolerance) return;
+      const t = (y - a.y) / (b.y - a.y);
+      if (t >= -extrapolationSlack && t <= 1 + extrapolationSlack) intersections.push(a.x + t * (b.x - a.x));
     };
+    tryEndpointSegment(points[0], points[1]);
+    tryEndpointSegment(points[points.length - 2], points[points.length - 1]);
   }
-  return {
-    ...buildConfinedResult('confined_eaps_on', noWind, actualWeightKg, paFt, oat, CONFINED_EAPS_ON_EXACT.main.kgMax, '6800', 'Supplement 50 / Figure 4-6', 'Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.'),
-    referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6800'),
-    resultDescription: 'Resultado calculado com a carta Confined EAPS ON do Supplement 50 para pesos acima de 6400 kg.'
-  };
+  if (!intersections.length) return NaN;
+  return Math.max(...intersections);
 }
 
 function std_xToKg(x) { const m = OFFSHORE_STANDARD_EXACT.main; return m.kgMin + ((x - m.xMin) / (m.xMax - m.xMin)) * (m.kgMax - m.kgMin); }
@@ -570,30 +559,79 @@ function confinedstd_paToY(paFt) { const m = CONFINED_STANDARD_EXACT.main; const
 function confinedstd_getSortedTemps() { return Object.keys(CONFINED_STANDARD_EXACT.tempCurves).map(Number).sort((a,b)=>a-b); }
 function confinedstd_getCurveForTemp(temp) { return toPoints(CONFINED_STANDARD_EXACT.tempCurves[String(temp)]); }
 function confinedstd_getNoWindLimit(paFt,oat) { const temps=confinedstd_getSortedTemps(); const paY=confinedstd_paToY(paFt); if(oat<temps[0]||oat>temps[temps.length-1]) return {error:'OAT fora da faixa do Figure 4-4 (-30°C a 40°C).'}; let lower=temps[0], upper=temps[temps.length-1]; for(const t of temps){ if(t<=oat) lower=t; if(t>=oat){upper=t; break;} } const lowerCurve=confinedstd_getCurveForTemp(lower), upperCurve=confinedstd_getCurveForTemp(upper); const lowerX=xAtY(lowerCurve, paY), upperX=xAtY(upperCurve, paY); if(Number.isNaN(lowerX)||Number.isNaN(upperX)) return {error:'O ponto de altitude/OAT saiu da família explícita de curvas do Figure 4-4.'}; let interpolatedX=lowerX; if(lower!==upper){ const t=(oat-lower)/(upper-lower); interpolatedX=lowerX+t*(upperX-lowerX); } return {paY, lowerTemp:lower, upperTemp:upper, lowerCurve, upperCurve, lowerX, upperX, noWindX:interpolatedX, noWindKg:confinedstd_xToKg(interpolatedX)}; }
-function calculateExactConfinedStandard(paFt,oat,actualWeightKg,headwindKt) {
-  if (actualWeightKg <= 6400) {
-    const low = calculateConfined6400('confined_standard', CONFINED_STANDARD_6400_EXACT, CONFINED_6400_VARIANTS.confined_standard.figureLabel, actualWeightKg, paFt, oat);
-    if (low?.error) return { ...low, profileId: 'confined_standard', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_standard', '6400') };
-    return {
-      ...low,
-      referenceHtml: buildConfinedReferenceHtml('confined_standard', '6400'),
-      resultDescription: 'Resultado calculado com a carta Confined Standard do Supplement 12 para pesos até 6400 kg.'
-    };
+function calculateExactConfinedStandard(paFt,oat,actualWeightKg,headwindKt) { const noWind=confinedstd_getNoWindLimit(paFt,oat); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(6900, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'confined_standard', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
+
+function confinedeoff_xToKg(x) { return x * 100; }
+function confinedeoff_kgToX(kg) { return kg / 100; }
+function confinedeoff_paToY(paFt) { return clamp(paFt / 1000, CONFINED_EAPS_OFF_EXACT.main.yBottomFt, CONFINED_EAPS_OFF_EXACT.main.yTopFt); }
+function confinedeoff_getSortedTemps() { return Object.keys(CONFINED_EAPS_OFF_EXACT.tempCurves).map(Number).sort((a,b)=>a-b); }
+function confinedeoff_getCurveForTemp(temp) { return toPoints(CONFINED_EAPS_OFF_EXACT.tempCurves[String(temp)]); }
+function confinedeoff_getNoWindLimit(paFt,oat) { const temps=confinedeoff_getSortedTemps(); const paY=confinedeoff_paToY(paFt); if(oat<temps[0]||oat>temps[temps.length-1]) return {error:'OAT fora da faixa do Figure 4-5 (-30°C a 30°C).'}; let lower=temps[0], upper=temps[temps.length-1]; for(const t of temps){ if(t<=oat) lower=t; if(t>=oat){ upper=t; break; } } const lowerCurve=confinedeoff_getCurveForTemp(lower), upperCurve=confinedeoff_getCurveForTemp(upper); const lowerX=xAtY(lowerCurve, paY), upperX=xAtY(upperCurve, paY); if(Number.isNaN(lowerX)||Number.isNaN(upperX)) return {error:'O ponto de altitude/OAT saiu da família explícita de curvas do Figure 4-5.'}; let interpolatedX=lowerX; if(lower!==upper){ const t=(oat-lower)/(upper-lower); interpolatedX=lowerX+t*(upperX-lowerX); } return { paY, lowerTemp:lower, upperTemp:upper, lowerCurve, upperCurve, lowerX, upperX, noWindX:interpolatedX, noWindKg:confinedeoff_xToKg(interpolatedX) }; }
+function calculateExactConfinedEapsOff(paFt,oat,actualWeightKg,headwindKt) { const noWind=confinedeoff_getNoWindLimit(paFt,oat); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(6900, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'confined_eaps_off', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
+
+function calculateExactIbfConfinedArea(paFt,oat,actualWeightKg,headwindKt) { const noWind=confinedibf_getNoWindLimit(paFt,oat); if(noWind.error) return noWind; const maxWeight=roundToFive(Math.min(6900, noWind.noWindKg)); const margin=maxWeight-actualWeightKg; return { profileId:'confined_ibf', exact:true, noWind, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt:0 }; }
+
+function eaps_xToKg(x) { const m = OFFSHORE_EAPS_ON_EXACT.main; return m.kgMin + ((x - m.xMin) / (m.xMax - m.xMin)) * (m.kgMax - m.kgMin); }
+function eaps_kgToX(kg) { const m = OFFSHORE_EAPS_ON_EXACT.main; return m.xMin + ((kg - m.kgMin) / (m.kgMax - m.kgMin)) * (m.xMax - m.xMin); }
+function eaps_paToY(paFt) { const m=OFFSHORE_EAPS_ON_EXACT.main; const pa=clamp(paFt,m.minPaFt,m.maxPaFt); const t=(pa-m.minPaFt)/(m.maxPaFt-m.minPaFt); return m.yBottomFt + t*(m.yTopFt-m.yBottomFt); }
+function eaps_hwToY(hwKt) { const hw=OFFSHORE_EAPS_ON_EXACT.headwind; const kt=clamp(hwKt,0,hw.maxKt); return hw.yTop + (kt/hw.maxKt)*(hw.yBottom-hw.yTop); }
+function eaps_getSortedTemps() { return Object.keys(OFFSHORE_EAPS_ON_EXACT.tempCurves).map(Number).sort((a,b)=>a-b); }
+function eaps_getCurveForTemp(temp) { return toPoints(OFFSHORE_EAPS_ON_EXACT.tempCurves[String(temp)]); }
+function eaps_getNoWindLimit(paFt,oat) { const temps=eaps_getSortedTemps(); const paY=eaps_paToY(paFt); if(oat<temps[0]||oat>temps[temps.length-1]) return {error:'OAT fora da faixa do Figure 4-9 (-40°C a 50°C).'}; let lower=temps[0], upper=temps[temps.length-1]; for(const t of temps){ if(t<=oat) lower=t; if(t>=oat){upper=t; break;} } const lowerCurve=eaps_getCurveForTemp(lower), upperCurve=eaps_getCurveForTemp(upper); const lowerX=xAtY(lowerCurve, paY), upperX=xAtY(upperCurve, paY); if(Number.isNaN(lowerX)||Number.isNaN(upperX)) return {error:'O ponto de altitude/OAT saiu da família explícita de curvas do Figure 4-9.'}; let interpolatedX=lowerX; if(lower!==upper){ const t=(oat-lower)/(upper-lower); interpolatedX=lowerX+t*(upperX-lowerX); } return {paY, lowerTemp:lower, upperTemp:upper, lowerCurve, upperCurve, lowerX, upperX, noWindX:interpolatedX, noWindKg:eaps_xToKg(interpolatedX)}; }
+function eaps_getHeadwindAdjustedLimit(baseKg, headwindKt) { const hw=clamp(headwindKt,0,OFFSHORE_EAPS_ON_EXACT.headwind.maxKt); if(hw===0) return { hwY: eaps_hwToY(0), familyBases: [], familyValues: [], maxKg: baseKg }; const familyBases=Object.keys(OFFSHORE_EAPS_ON_EXACT.headwindCurves).map(Number).sort((a,b)=>a-b); const targetY=eaps_hwToY(hw); const familyValues=familyBases.map((base)=>{ const curve=toPoints(OFFSHORE_EAPS_ON_EXACT.headwindCurves[String(base)]); const x=xAtY(curve,targetY); return eaps_xToKg(x); }); return { hwY: targetY, familyBases, familyValues, maxKg: interp1(clamp(baseKg,familyBases[0],familyBases[familyBases.length-1]), familyBases, familyValues) }; }
+function calculateExactEapsOn(paFt,oat,actualWeightKg,headwindKt) { const noWind=eaps_getNoWindLimit(paFt,oat); if(noWind.error) return noWind; const hw=eaps_getHeadwindAdjustedLimit(noWind.noWindKg, headwindKt); const maxWeight=roundToFive(Math.min(OFFSHORE_EAPS_ON_EXACT.main.kgMax, hw.maxKg)); const margin=maxWeight-actualWeightKg; return { profileId:'offshore_eaps_on', exact:true, noWind, hw, maxWeight, margin, within: margin>=0, actualWeightKg, paFt, oat, headwindKt }; }
+
+function roundRect(targetCtx, x, y, width, height, radius) { targetCtx.moveTo(x+radius,y); targetCtx.lineTo(x+width-radius,y); targetCtx.quadraticCurveTo(x+width,y,x+width,y+radius); targetCtx.lineTo(x+width,y+height-radius); targetCtx.quadraticCurveTo(x+width,y+height,x+width-radius,y+height); targetCtx.lineTo(x+radius,y+height); targetCtx.quadraticCurveTo(x,y+height,x,y+height-radius); targetCtx.lineTo(x,y+radius); targetCtx.quadraticCurveTo(x,y,x+radius,y); }
+function drawLegendRow(targetCtx,startX,startY,items) { targetCtx.save(); targetCtx.font='20px Inter, system-ui, sans-serif'; targetCtx.textBaseline='middle'; let x=startX; items.forEach((item)=>{ targetCtx.fillStyle=item.color; targetCtx.beginPath(); targetCtx.arc(x+9,startY,9,0,Math.PI*2); targetCtx.fill(); targetCtx.fillStyle='#c9d6e8'; targetCtx.fillText(item.label,x+28,startY+1); x += 28 + targetCtx.measureText(item.label).width + 38; }); targetCtx.restore(); }
+function renderProfileAnnotatedCanvas(ex, exportCanvas, result, cfg) { const {profile,pxX,pxY,data,actualX,maxX,chartExtents,includeFooter,includeSummaryBox,compactSummaryBox}=cfg; const baseHeight = exportCanvas.height - (includeFooter ? 190 : 0); const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); }; const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); }; if(result && !result.error){ const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447'; drawPolyline(toPoints(data.limits.maxOat),'#5b6bd4',2,true); drawPolyline(toPoints(data.limits.hdLimit),'#5b6bd4',2,true); drawPolyline(result.noWind.lowerCurve,amber,3); if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve,amber,3); const paY=result.noWind.paY, noWindX=result.noWind.noWindX, currentActualX=actualX(result.actualWeightKg), currentMaxX=maxX(result.maxWeight), hwY=result.hw.hwY; ex.save(); ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(chartExtents.xMin),pxY(paY)); ex.lineTo(pxX(chartExtents.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]); ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(chartExtents.yMainBottom)); ex.lineTo(pxX(currentActualX),pxY(chartExtents.yHwBottom)); ex.stroke(); ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(chartExtents.yMainBottom)); ex.lineTo(pxX(currentMaxX),pxY(chartExtents.yHwBottom)); ex.stroke(); ex.setLineDash([10,8]); ex.strokeStyle='#ffffff'; ex.beginPath(); ex.moveTo(pxX(data.headwind.xMin||chartExtents.xMin),pxY(hwY)); ex.lineTo(pxX(data.headwind.xMax||chartExtents.xMax),pxY(hwY)); ex.stroke(); ex.restore(); const dotRadius=includeFooter?5.5:4.5; marker(noWindX,paY,'#ffffff',dotRadius+1); marker(currentActualX,paY,blue,dotRadius); marker(currentMaxX,hwY,withinColor,dotRadius+1); if(includeSummaryBox){ const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168; ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke(); ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(profile.previewTitle,boxX+22,boxY+(compactSummaryBox?38:40)); ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif'; if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${profile.procedureLabel} | Configuration: ${profile.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg | HW ${Math.round(result.headwindKt)} kt`,boxX+22,boxY+106); ex.fillText(`No wind ${Math.round(result.noWind.noWindKg)} kg | Final ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); } else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | HW ${Math.round(result.headwindKt)} kt`,boxX+22,boxY+76); ex.fillText(`No wind ${Math.round(result.noWind.noWindKg)} kg | Final ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); } ex.restore(); } if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',80,legendY+50); ex.fillText(profile.figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); } } return exportCanvas; }
+function renderStandardAnnotatedCanvas(result=currentResult, options={}) { if(!standardPageImage.complete||!standardPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=standardPageImage.naturalWidth, baseHeight=standardPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(standardPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const clipPlacement={ x: STANDARD_EXPORT_PAGE_PLACEMENT.offsetX, y: STANDARD_EXPORT_PAGE_PLACEMENT.offsetY, width: standardClipImage.naturalWidth*STANDARD_EXPORT_PAGE_PLACEMENT.scale, height: standardClipImage.naturalHeight*STANDARD_EXPORT_PAGE_PLACEMENT.scale }; const pxX=(x)=>clipPlacement.x + ((x-35)/(320-35))*clipPlacement.width; const pxY=(y)=>clipPlacement.y + ((y-145)/(505-145))*clipPlacement.height; return renderProfileAnnotatedCanvas(ex, exportCanvas, result, { profile: PROFILE_MAP.offshore_standard, pxX, pxY, data: OFFSHORE_STANDARD_EXACT, actualX: std_kgToX, maxX: std_kgToX, chartExtents: { xMin:81.379, xMax:271.707, yMainBottom:388.388, yHwBottom:488.12 }, includeFooter, includeSummaryBox, compactSummaryBox }); }
+function renderEapsOffAnnotatedCanvas(result=currentResult, options={}) { if(!eapsOffPageImage.complete||!eapsOffPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=eapsOffPageImage.naturalWidth, baseHeight=eapsOffPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(eapsOffPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const pxX=(x)=>EAPS_OFF_PAGE_PLACEMENT.offsetX + (x * EAPS_OFF_PAGE_PLACEMENT.scaleX); const pxY=(y)=>EAPS_OFF_PAGE_PLACEMENT.offsetY + (y * EAPS_OFF_PAGE_PLACEMENT.scaleY); return renderProfileAnnotatedCanvas(ex, exportCanvas, result, { profile: PROFILE_MAP.offshore_eaps_off, pxX, pxY, data: OFFSHORE_EAPS_OFF_EXACT, actualX: off_kgToX, maxX: off_kgToX, chartExtents: { xMin: OFFSHORE_EAPS_OFF_EXACT.main.xMin, xMax: OFFSHORE_EAPS_OFF_EXACT.main.xMax, yMainBottom: OFFSHORE_EAPS_OFF_EXACT.main.yBottomFt, yHwBottom: OFFSHORE_EAPS_OFF_EXACT.headwind.yBottom }, includeFooter, includeSummaryBox, compactSummaryBox }); }
+function renderClearIbfAnnotatedCanvas(result=currentResult, options={}) { if(!clearIbfPageImage.complete||!clearIbfPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=clearIbfPageImage.naturalWidth, baseHeight=clearIbfPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(clearIbfPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const pxX=(x)=>CLEAR_IBF_PAGE_PLACEMENT.offsetX + (x * CLEAR_IBF_PAGE_PLACEMENT.scaleX); const pxY=(y)=>CLEAR_IBF_PAGE_PLACEMENT.offsetY + (y * CLEAR_IBF_PAGE_PLACEMENT.scaleY); if(result && !result.error){ const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447'; const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); }; const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); }; drawPolyline(result.noWind.lowerCurve, amber, 3); if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve, amber, 3); const paY=result.noWind.paY, maxX=result.noWind.noWindX, currentActualX=clearibf_kgToX(result.actualWeightKg), currentMaxX=clearibf_kgToX(result.maxWeight); ex.save(); ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(CLEARAREA_IBF_EXACT.main.xMin),pxY(paY)); ex.lineTo(pxX(CLEARAREA_IBF_EXACT.main.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]); ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(CLEARAREA_IBF_EXACT.main.yBottomFt)); ex.lineTo(pxX(currentActualX),pxY(paY)); ex.stroke(); ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(CLEARAREA_IBF_EXACT.main.yBottomFt)); ex.lineTo(pxX(currentMaxX),pxY(paY)); ex.stroke(); ex.restore(); const dotRadius=includeFooter?5.5:4.5; marker(maxX,paY,'#ffffff',dotRadius+1); marker(currentActualX,paY,blue,dotRadius); if(includeSummaryBox){ const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168; ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke(); ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(PROFILE_MAP.clear_ibf.previewTitle,boxX+22,boxY+(compactSummaryBox?38:40)); ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif'; if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${PROFILE_MAP.clear_ibf.procedureLabel} | Configuration: ${PROFILE_MAP.clear_ibf.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg`,boxX+22,boxY+106); ex.fillText(`Max ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); } else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C`,boxX+22,boxY+76); ex.fillText(`Max ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); } ex.restore(); } if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',80,legendY+50); ex.fillText(PROFILE_MAP.clear_ibf.figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); } } return exportCanvas; }
+
+function renderConfinedStandardAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPdfPage(result, options, confinedStandardPageImage, PROFILE_MAP.confined_standard, CONFINED_STANDARD_EXACT); }
+function renderConfinedEapsOffAnnotatedCanvas(result=currentResult, options={}) { if(!confinedEapsOffPageImage.complete||!confinedEapsOffPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=confinedEapsOffPageImage.naturalWidth, baseHeight=confinedEapsOffPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(confinedEapsOffPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const plot=CONFINED_EAPS_OFF_EXACT.plot, main=CONFINED_EAPS_OFF_EXACT.main; const pxX=(x)=>plot.x0 + ((x-main.xMin)/(main.xMax-main.xMin))*(plot.x1-plot.x0); const pxY=(y)=>plot.y0 + ((main.yTopFt-y)/(main.yTopFt-main.yBottomFt))*(plot.y1-plot.y0); if(result && !result.error){ const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447'; const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); }; const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); }; drawPolyline(result.noWind.lowerCurve, amber, 3); if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve, amber, 3); const paY=result.noWind.paY, maxX=result.noWind.noWindX, currentActualX=confinedeoff_kgToX(result.actualWeightKg), currentMaxX=maxX; ex.save(); ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(main.xMin),pxY(paY)); ex.lineTo(pxX(main.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]); ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(main.yBottomFt)); ex.lineTo(pxX(currentActualX),pxY(paY)); ex.stroke(); ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(main.yBottomFt)); ex.lineTo(pxX(currentMaxX),pxY(paY)); ex.stroke(); ex.restore(); const dotRadius=includeFooter?5.5:4.5; marker(maxX,paY,'#ffffff',dotRadius+1); marker(currentActualX,paY,blue,dotRadius); marker(currentActualX,main.yBottomFt,blue,dotRadius-0.5); marker(currentMaxX,main.yBottomFt,withinColor,dotRadius); if(includeSummaryBox){ const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168; ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke(); ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(PROFILE_MAP.confined_eaps_off.previewTitle,boxX+22,boxY+(compactSummaryBox?38:40)); ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif'; if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${PROFILE_MAP.confined_eaps_off.procedureLabel} | Configuration: ${PROFILE_MAP.confined_eaps_off.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg`,boxX+22,boxY+106); ex.fillText(`Max ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); } else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C`,boxX+22,boxY+76); ex.fillText(`Max ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); } ex.restore(); } if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',80,legendY+50); ex.fillText(PROFILE_MAP.confined_eaps_off.figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); } } return exportCanvas; }
+
+function renderConfinedIbfAnnotatedCanvas(result=currentResult, options={}) { if(!confinedIbfPageImage.complete||!confinedIbfPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=confinedIbfPageImage.naturalWidth, baseHeight=confinedIbfPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(confinedIbfPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const pxX=(x)=>CONFINED_IBF_PAGE_PLACEMENT.offsetX + (x * CONFINED_IBF_PAGE_PLACEMENT.scaleX); const pxY=(y)=>CONFINED_IBF_PAGE_PLACEMENT.offsetY + (y * CONFINED_IBF_PAGE_PLACEMENT.scaleY); if(result && !result.error){ const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447'; const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); }; const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); }; drawPolyline(result.noWind.lowerCurve, amber, 3); if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve, amber, 3); const paY=result.noWind.paY, maxX=result.noWind.noWindX, currentActualX=confinedibf_kgToX(result.actualWeightKg), currentMaxX=maxX; ex.save(); ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(CONFINED_IBF_EXACT.main.xMin),pxY(paY)); ex.lineTo(pxX(CONFINED_IBF_EXACT.main.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]); ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(CONFINED_IBF_EXACT.main.yBottomFt)); ex.lineTo(pxX(currentActualX),pxY(paY)); ex.stroke(); ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(CONFINED_IBF_EXACT.main.yBottomFt)); ex.lineTo(pxX(currentMaxX),pxY(paY)); ex.stroke(); ex.restore(); const dotRadius=includeFooter?5.5:4.5; marker(maxX,paY,'#ffffff',dotRadius+1); marker(currentActualX,paY,blue,dotRadius); marker(currentActualX,CONFINED_IBF_EXACT.main.yBottomFt,blue,dotRadius-0.5); marker(currentMaxX,CONFINED_IBF_EXACT.main.yBottomFt,withinColor,dotRadius); if(includeSummaryBox){ const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168; ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke(); ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(PROFILE_MAP.confined_ibf.previewTitle,boxX+22,boxY+(compactSummaryBox?38:40)); ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif'; if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${PROFILE_MAP.confined_ibf.procedureLabel} | Configuration: ${PROFILE_MAP.confined_ibf.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg`,boxX+22,boxY+106); ex.fillText(`Max ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); } else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C`,boxX+22,boxY+76); ex.fillText(`Max ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); } ex.restore(); } if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',80,legendY+50); ex.fillText(PROFILE_MAP.confined_ibf.figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); } } return exportCanvas; }
+function renderIbfAnnotatedCanvas(result=currentResult, options={}) { if(!ibfPageImage.complete||!ibfPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=ibfPageImage.naturalWidth, baseHeight=ibfPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(ibfPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const pxX=(x)=>IBF_PAGE_PLACEMENT.offsetX + (x * IBF_PAGE_PLACEMENT.scaleX); const pxY=(y)=>IBF_PAGE_PLACEMENT.offsetY + (y * IBF_PAGE_PLACEMENT.scaleY); return renderProfileAnnotatedCanvas(ex, exportCanvas, result, { profile: PROFILE_MAP.offshore_ibf, pxX, pxY, data: OFFSHORE_IBF_INSTALLED_EXACT, actualX: ibf_kgToX, maxX: ibf_kgToX, chartExtents: { xMin: OFFSHORE_IBF_INSTALLED_EXACT.main.xMin, xMax: OFFSHORE_IBF_INSTALLED_EXACT.main.xMax, yMainBottom: OFFSHORE_IBF_INSTALLED_EXACT.main.yBottomFt, yHwBottom: OFFSHORE_IBF_INSTALLED_EXACT.headwind.yBottom }, includeFooter, includeSummaryBox, compactSummaryBox }); }
+function renderEapsAnnotatedCanvas(result=currentResult, options={}) { if(!eapsPageImage.complete||!eapsPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=eapsPageImage.naturalWidth, baseHeight=eapsPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(eapsPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const pxX=(x)=>EAPS_PAGE_PLACEMENT.offsetX + (x * EAPS_PAGE_PLACEMENT.scaleX); const pxY=(y)=>EAPS_PAGE_PLACEMENT.offsetY + (y * EAPS_PAGE_PLACEMENT.scaleY); return renderProfileAnnotatedCanvas(ex, exportCanvas, result, { profile: PROFILE_MAP.offshore_eaps_on, pxX, pxY, data: OFFSHORE_EAPS_ON_EXACT, actualX: eaps_kgToX, maxX: eaps_kgToX, chartExtents: { xMin: OFFSHORE_EAPS_ON_EXACT.main.xMin, xMax: OFFSHORE_EAPS_ON_EXACT.main.xMax, yMainBottom: OFFSHORE_EAPS_ON_EXACT.main.yBottomFt, yHwBottom: OFFSHORE_EAPS_ON_EXACT.headwind.yBottom }, includeFooter, includeSummaryBox, compactSummaryBox }); }
+function renderGenericNoHeadwindPdfPage(result, options, pageImage, profile, data) {
+  if(!pageImage.complete || !pageImage.naturalWidth) return null;
+  const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false;
+  const baseWidth=pageImage.naturalWidth, baseHeight=pageImage.naturalHeight, footerExtra=includeFooter?190:0;
+  const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra;
+  const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(pageImage,0,0);
+  if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); }
+  const pxX=(x)=>(x/data.page.width)*baseWidth;
+  const pxY=(y)=>(y/data.page.height)*baseHeight;
+  if(result && !result.error){
+    const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447';
+    const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); };
+    const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); };
+    drawPolyline(result.noWind.lowerCurve, amber, 3);
+    if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve, amber, 3);
+    const paY=result.noWind.paY, currentActualX=genericPdfChartKgToX(data, result.actualWeightKg), currentMaxX=genericPdfChartKgToX(data, result.maxWeight), maxX=result.noWind.noWindX;
+    ex.save();
+    ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(data.main.xMin),pxY(paY)); ex.lineTo(pxX(data.main.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]);
+    ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(data.main.yBottomFt)); ex.lineTo(pxX(currentActualX),pxY(paY)); ex.stroke();
+    ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(data.main.yBottomFt)); ex.lineTo(pxX(currentMaxX),pxY(paY)); ex.stroke();
+    ex.restore();
+    const dotRadius=includeFooter?5.5:4.5;
+    marker(maxX,paY,'#ffffff',dotRadius+1);
+    marker(currentActualX,paY,blue,dotRadius);
+    marker(currentActualX,data.main.yBottomFt,blue,dotRadius-0.5);
+    marker(currentMaxX,data.main.yBottomFt,withinColor,dotRadius);
+    if(includeSummaryBox){
+      const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168;
+      ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke();
+      ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(profile.previewTitle,boxX+22,boxY+(compactSummaryBox?38:40));
+      ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif';
+      if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${profile.procedureLabel} | Configuration: ${profile.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg`,boxX+22,boxY+106); ex.fillText(`Max ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); }
+      else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C`,boxX+22,boxY+76); ex.fillText(`Max ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); }
+      ex.restore();
+    }
+    if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',80,legendY+50); ex.fillText(profile.figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); }
   }
-  const noWind = confinedstd_getNoWindLimit(paFt,oat);
-  if (noWind.error) {
-    return {
-      ...noWind,
-      profileId: 'confined_standard',
-      chartFamily: '6800',
-      referenceHtml: buildConfinedReferenceHtml('confined_standard', '6800')
-    };
-  }
-  return {
-    ...buildConfinedResult('confined_standard', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-4', 'Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.'),
-    referenceHtml: buildConfinedReferenceHtml('confined_standard', '6800'),
-    resultDescription: 'Resultado calculado com a carta Confined Standard do Supplement 50 para pesos acima de 6400 kg.'
-  };
+  return exportCanvas;
 }
 function renderGenericNoHeadwindPlacedPage(result, options, pageImage, profile, data, placement) {
   if(!pageImage.complete || !pageImage.naturalWidth) return null;
@@ -637,28 +675,8 @@ function renderGenericNoHeadwindPlacedPage(result, options, pageImage, profile, 
 function renderClearStandardAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPdfPage(result, options, clearStandardPageImage, PROFILE_MAP.clear_standard, CLEAR_STANDARD_EXACT); }
 function renderClearEapsOffAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPdfPage(result, options, clearEapsOffPageImage, PROFILE_MAP.clear_eaps_off, CLEAR_EAPS_OFF_EXACT); }
 function renderClearEapsOnAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPdfPage(result, options, clearEapsOnPageImage, PROFILE_MAP.clear_eaps_on, CLEAR_EAPS_ON_EXACT); }
-function renderConfinedEapsOnAnnotatedCanvas(result=currentResult, options={}) {
-  const renderProfile = getRenderableProfile(PROFILE_MAP.confined_eaps_on, result);
-  if (result?.chartFamily === '6400') {
-    return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_EAPS_ON_6400_EXACT, CONFINED_STANDARD_6400_PAGE_PLACEMENT);
-  }
-  return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_EAPS_ON_EXACT, EAPS_PAGE_PLACEMENT);
-}
-function getRenderableProfile(profile, result=currentResult) {
-  if (!(profile && typeof profile.render === 'function')) return null;
-  if (result?.chartFamily === '6400' && CONFINED_6400_VARIANTS[profile.id]) {
-    const variant = CONFINED_6400_VARIANTS[profile.id];
-    return {
-      ...profile,
-      pageSrc: variant.pageSrc,
-      pageImage: variant.pageImage,
-      figureLabel: variant.figureLabel,
-      previewTitle: `${profile.previewTitle.replace(' - página completa do RFM', '')} - página completa do RFM (Supp 12)`,
-      referenceHtml: buildConfinedReferenceHtml(profile.id, '6400')
-    };
-  }
-  return profile;
-}
+function renderConfinedEapsOnAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPlacedPage(result, options, confinedEapsOnPageImage, PROFILE_MAP.confined_eaps_on, CONFINED_EAPS_ON_EXACT, EAPS_PAGE_PLACEMENT); }
+function getRenderableProfile(profile) { return profile && typeof profile.render === 'function' ? profile : null; }
 function resetPendingState() { statusCard.className='card status neutral'; statusBadge.textContent='AGUARDANDO DADOS'; statusTitle.textContent='Envelope check'; statusText.textContent='Selecione procedure, configuration e preencha altitude, OAT e peso atual.'; maxWeightEl.textContent='—'; marginEl.textContent='—'; currentResult=null; drawOverlay(); }
 function showUncalibratedProfileState() { statusCard.className='card status neutral'; statusBadge.textContent='PERFIL NÃO CALIBRADO'; statusTitle.textContent='Modo ainda não calibrado'; statusText.textContent='O perfil selecionado ainda não possui motor de cálculo calibrado nesta build.'; maxWeightEl.textContent='—'; marginEl.textContent='—'; currentResult=null; drawOverlay(); }
 function showRangeError(result) { statusCard.className='card status neutral'; statusBadge.textContent='PONTO FORA DA FAIXA'; statusTitle.textContent='Validação manual necessária'; statusText.textContent=result.error; maxWeightEl.textContent='—'; marginEl.textContent='—'; currentResult=result; drawOverlay(result); }
@@ -804,14 +822,14 @@ function buildConfinedResult(profileId, noWind, actualWeightKg, paFt, oat, maxKg
     paFt,
     oat,
     headwindKt: 0,
-    referenceHtml: buildConfinedReferenceHtml(profileId, chartFamily),
-    resultDescription: `Resultado calculado com a carta Confined da família ${chartFamily === '6400' ? 'Supplement 12' : 'Supplement 50'} (${sourceLabel}).`
+    referenceHtml: getReferenceHtmlByProfileId(profileId),
+    resultDescription: `Resultado calculado com seleção automática da família Confined (${sourceLabel}).`
   };
 }
 function calculateConfined6400(profileId, data, figureLabel, actualWeightKg, paFt, oat) {
   const noWind = genericPdfChartNoWindLimit(data, paFt, oat, figureLabel);
   if (noWind.error) return noWind;
-  return buildConfinedResult(profileId, noWind, actualWeightKg, paFt, oat, 6400, '6400', `Supplement 12 / ${figureLabel}`, figureLabel);
+  return buildConfinedResult(profileId, noWind, actualWeightKg, paFt, oat, data.main.kgMax, '6400', `Supplement 12 / ${figureLabel}`, figureLabel);
 }
 function chooseConfinedResult(profileId, actualWeightKg, preferredResult, fallbackResult, preferredFamily) {
   if (preferredResult && !preferredResult.error) return preferredResult;
@@ -820,132 +838,80 @@ function chooseConfinedResult(profileId, actualWeightKg, preferredResult, fallba
 }
 
 function calculateExactConfinedStandard(paFt,oat,actualWeightKg,headwindKt) {
-  if (actualWeightKg <= 6400) {
-    const low = calculateConfined6400('confined_standard', CONFINED_STANDARD_6400_EXACT, CONFINED_6400_VARIANTS.confined_standard.figureLabel, actualWeightKg, paFt, oat);
-    if (low?.error) return { ...low, profileId: 'confined_standard', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_standard', '6400') };
-    return {
-      ...low,
-      referenceHtml: buildConfinedReferenceHtml('confined_standard', '6400'),
-      resultDescription: 'Resultado calculado com a carta Confined Standard do Supplement 12 para pesos até 6400 kg.'
-    };
-  }
   const noWind = confinedstd_getNoWindLimit(paFt,oat);
   if (noWind.error) {
     return {
       ...noWind,
       profileId: 'confined_standard',
       chartFamily: '6800',
-      referenceHtml: buildConfinedReferenceHtml('confined_standard', '6800')
+      referenceHtml: getReferenceHtmlByProfileId('confined_standard')
     };
   }
   return {
     ...buildConfinedResult('confined_standard', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-4', 'Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.'),
-    referenceHtml: buildConfinedReferenceHtml('confined_standard', '6800'),
-    resultDescription: 'Resultado calculado com a carta Confined Standard do Supplement 50 para pesos acima de 6400 kg.'
+    referenceHtml: getReferenceHtmlByProfileId('confined_standard'),
+    resultDescription: 'Resultado calculado somente com a carta Confined Standard do Supplement 50.'
   };
 }
 function calculateExactConfinedEapsOff(paFt,oat,actualWeightKg,headwindKt) {
-  if (actualWeightKg <= 6400) {
-    const low = calculateConfined6400('confined_eaps_off', CONFINED_EAPS_OFF_6400_EXACT, CONFINED_6400_VARIANTS.confined_eaps_off.figureLabel, actualWeightKg, paFt, oat);
-    if (low?.error) return { ...low, profileId: 'confined_eaps_off', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_eaps_off', '6400') };
-    return {
-      ...low,
-      referenceHtml: buildConfinedReferenceHtml('confined_eaps_off', '6400'),
-      resultDescription: 'Resultado calculado com a carta Confined EAPS OFF do Supplement 12 para pesos até 6400 kg.'
-    };
-  }
   const noWind = confinedeoff_getNoWindLimit(paFt,oat);
   if (noWind.error) {
     return {
       ...noWind,
       profileId: 'confined_eaps_off',
       chartFamily: '6800',
-      referenceHtml: buildConfinedReferenceHtml('confined_eaps_off', '6800')
+      referenceHtml: getReferenceHtmlByProfileId('confined_eaps_off')
     };
   }
   return {
     ...buildConfinedResult('confined_eaps_off', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-5', 'Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.'),
-    referenceHtml: buildConfinedReferenceHtml('confined_eaps_off', '6800'),
-    resultDescription: 'Resultado calculado com a carta Confined EAPS OFF do Supplement 50 para pesos acima de 6400 kg.'
+    referenceHtml: getReferenceHtmlByProfileId('confined_eaps_off'),
+    resultDescription: 'Resultado calculado somente com a carta Confined EAPS OFF do Supplement 50.'
   };
 }
 function calculateExactConfinedEapsOn(paFt,oat,actualWeightKg,headwindKt) {
-  if (actualWeightKg <= 6400) {
-    const low = calculateConfined6400('confined_eaps_on', CONFINED_EAPS_ON_6400_EXACT, CONFINED_6400_VARIANTS.confined_eaps_on.figureLabel, actualWeightKg, paFt, oat);
-    if (low?.error) return { ...low, profileId: 'confined_eaps_on', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6400') };
-    return {
-      ...low,
-      referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6400'),
-      resultDescription: 'Resultado calculado com a carta Confined EAPS ON do Supplement 12 para pesos até 6400 kg.'
-    };
-  }
   const noWind = genericPdfChartNoWindLimit(CONFINED_EAPS_ON_EXACT, paFt, oat, 'Figure 4-6');
   if (noWind.error) {
     return {
       ...noWind,
       profileId: 'confined_eaps_on',
       chartFamily: '6800',
-      referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6800')
+      referenceHtml: getReferenceHtmlByProfileId('confined_eaps_on')
     };
   }
   return {
     ...buildConfinedResult('confined_eaps_on', noWind, actualWeightKg, paFt, oat, CONFINED_EAPS_ON_EXACT.main.kgMax, '6800', 'Supplement 50 / Figure 4-6', 'Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.'),
-    referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6800'),
-    resultDescription: 'Resultado calculado com a carta Confined EAPS ON do Supplement 50 para pesos acima de 6400 kg.'
+    referenceHtml: getReferenceHtmlByProfileId('confined_eaps_on'),
+    resultDescription: 'Resultado calculado somente com a carta Confined EAPS ON do Supplement 50.'
   };
 }
 function calculateExactIbfConfinedArea(paFt,oat,actualWeightKg,headwindKt) {
-  if (actualWeightKg <= 6400) {
-    const low = calculateConfined6400('confined_ibf', CONFINED_IBF_6400_EXACT, CONFINED_6400_VARIANTS.confined_ibf.figureLabel, actualWeightKg, paFt, oat);
-    if (low?.error) return { ...low, profileId: 'confined_ibf', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_ibf', '6400') };
-    return {
-      ...low,
-      referenceHtml: buildConfinedReferenceHtml('confined_ibf', '6400'),
-      resultDescription: 'Resultado calculado com a carta Confined IBF Installed do Supplement 12 para pesos até 6400 kg.'
-    };
-  }
   const noWind = confinedibf_getNoWindLimit(paFt,oat);
   if (noWind.error) {
     return {
       ...noWind,
       profileId: 'confined_ibf',
       chartFamily: '6800',
-      referenceHtml: buildConfinedReferenceHtml('confined_ibf', '6800')
+      referenceHtml: getReferenceHtmlByProfileId('confined_ibf')
     };
   }
   return {
     ...buildConfinedResult('confined_ibf', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-9B', 'Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.'),
-    referenceHtml: buildConfinedReferenceHtml('confined_ibf', '6800'),
-    resultDescription: 'Resultado calculado com a carta Confined IBF Installed do Supplement 50 para pesos acima de 6400 kg.'
+    referenceHtml: getReferenceHtmlByProfileId('confined_ibf'),
+    resultDescription: 'Resultado calculado somente com a carta Confined IBF do Supplement 50.'
   };
 }
 
 function renderConfinedStandardAnnotatedCanvas(result=currentResult, options={}) {
-  const renderProfile = getRenderableProfile(PROFILE_MAP.confined_standard, result);
-  if (result?.chartFamily === '6400') {
-    return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_STANDARD_6400_EXACT, CONFINED_STANDARD_6400_PAGE_PLACEMENT);
-  }
-  return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_STANDARD_EXACT);
+  return renderGenericNoHeadwindPdfPage(result, options, confinedStandardPageImage, getRenderableProfile(PROFILE_MAP.confined_standard, result), CONFINED_STANDARD_EXACT);
 }
 function renderConfinedEapsOffAnnotatedCanvas(result=currentResult, options={}) {
-  const renderProfile = getRenderableProfile(PROFILE_MAP.confined_eaps_off, result);
-  if (result?.chartFamily === '6400') {
-    return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_EAPS_OFF_6400_EXACT, CONFINED_STANDARD_6400_PAGE_PLACEMENT);
-  }
   return (function(result=currentResult, options={}) { if(!confinedEapsOffPageImage.complete||!confinedEapsOffPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=confinedEapsOffPageImage.naturalWidth, baseHeight=confinedEapsOffPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(confinedEapsOffPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const plot=CONFINED_EAPS_OFF_EXACT.plot, main=CONFINED_EAPS_OFF_EXACT.main; const pxX=(x)=>plot.x0 + ((x-main.xMin)/(main.xMax-main.xMin))*(plot.x1-plot.x0); const pxY=(y)=>plot.y0 + ((main.yTopFt-y)/(main.yTopFt-main.yBottomFt))*(plot.y1-plot.y0); if(result && !result.error){ const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447'; const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); }; const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); }; drawPolyline(result.noWind.lowerCurve, amber, 3); if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve, amber, 3); const paY=result.noWind.paY, maxX=result.noWind.noWindX, currentActualX=confinedeoff_kgToX(result.actualWeightKg), currentMaxX=maxX; ex.save(); ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(main.xMin),pxY(paY)); ex.lineTo(pxX(main.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]); ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(main.yBottomFt)); ex.lineTo(pxX(currentActualX),pxY(paY)); ex.stroke(); ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(main.yBottomFt)); ex.lineTo(pxX(currentMaxX),pxY(paY)); ex.stroke(); ex.restore(); const dotRadius=includeFooter?5.5:4.5; marker(maxX,paY,'#ffffff',dotRadius+1); marker(currentActualX,paY,blue,dotRadius); marker(currentActualX,main.yBottomFt,blue,dotRadius-0.5); marker(currentMaxX,main.yBottomFt,withinColor,dotRadius); if(includeSummaryBox){ const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168; ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke(); ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(getRenderableProfile(PROFILE_MAP.confined_eaps_off, result).previewTitle,boxX+22,boxY+(compactSummaryBox?38:40)); ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif'; if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${PROFILE_MAP.confined_eaps_off.procedureLabel} | Configuration: ${PROFILE_MAP.confined_eaps_off.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg`,boxX+22,boxY+106); ex.fillText(`Max ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); } else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C`,boxX+22,boxY+76); ex.fillText(`Max ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); } ex.restore(); } if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',80,legendY+50); ex.fillText(getRenderableProfile(PROFILE_MAP.confined_eaps_off, result).figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); } } return exportCanvas; })(result, options);
 }
 function renderConfinedEapsOnAnnotatedCanvas(result=currentResult, options={}) {
-  const renderProfile = getRenderableProfile(PROFILE_MAP.confined_eaps_on, result);
-  if (result?.chartFamily === '6400') {
-    return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_EAPS_ON_6400_EXACT, CONFINED_STANDARD_6400_PAGE_PLACEMENT);
-  }
-  return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_EAPS_ON_EXACT, EAPS_PAGE_PLACEMENT);
+  return renderGenericNoHeadwindPlacedPage(result, options, confinedEapsOnPageImage, getRenderableProfile(PROFILE_MAP.confined_eaps_on, result), CONFINED_EAPS_ON_EXACT, EAPS_PAGE_PLACEMENT);
 }
 function renderConfinedIbfAnnotatedCanvas(result=currentResult, options={}) {
-  const renderProfile = getRenderableProfile(PROFILE_MAP.confined_ibf, result);
-  if (result?.chartFamily === '6400') {
-    return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_IBF_6400_EXACT, CONFINED_STANDARD_6400_PAGE_PLACEMENT);
-  }
   return (function(result=currentResult, options={}) { if(!confinedIbfPageImage.complete||!confinedIbfPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=confinedIbfPageImage.naturalWidth, baseHeight=confinedIbfPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(confinedIbfPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const pxX=(x)=>CONFINED_IBF_PAGE_PLACEMENT.offsetX + (x * CONFINED_IBF_PAGE_PLACEMENT.scaleX); const pxY=(y)=>CONFINED_IBF_PAGE_PLACEMENT.offsetY + (y * CONFINED_IBF_PAGE_PLACEMENT.scaleY); if(result && !result.error){ const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447'; const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); }; const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); }; drawPolyline(result.noWind.lowerCurve, amber, 3); if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve, amber, 3); const paY=result.noWind.paY, maxX=result.noWind.noWindX, currentActualX=confinedibf_kgToX(result.actualWeightKg), currentMaxX=maxX; ex.save(); ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(CONFINED_IBF_EXACT.main.xMin),pxY(paY)); ex.lineTo(pxX(CONFINED_IBF_EXACT.main.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]); ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(CONFINED_IBF_EXACT.main.yBottomFt)); ex.lineTo(pxX(currentActualX),pxY(paY)); ex.stroke(); ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(CONFINED_IBF_EXACT.main.yBottomFt)); ex.lineTo(pxX(currentMaxX),pxY(paY)); ex.stroke(); ex.restore(); const dotRadius=includeFooter?5.5:4.5; marker(maxX,paY,'#ffffff',dotRadius+1); marker(currentActualX,paY,blue,dotRadius); marker(currentActualX,CONFINED_IBF_EXACT.main.yBottomFt,blue,dotRadius-0.5); marker(currentMaxX,CONFINED_IBF_EXACT.main.yBottomFt,withinColor,dotRadius); if(includeSummaryBox){ const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168; ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke(); ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(getRenderableProfile(PROFILE_MAP.confined_ibf, result).previewTitle,boxX+22,boxY+(compactSummaryBox?38:40)); ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif'; if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${PROFILE_MAP.confined_ibf.procedureLabel} | Configuration: ${PROFILE_MAP.confined_ibf.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg`,boxX+22,boxY+106); ex.fillText(`Max ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); } else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C`,boxX+22,boxY+76); ex.fillText(`Max ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); } ex.restore(); } if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',80,legendY+50); ex.fillText(getRenderableProfile(PROFILE_MAP.confined_ibf, result).figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); } } return exportCanvas; })(result, options);
 }
 
@@ -957,17 +923,6 @@ function useConfinedStandardStitchedVisualization(result=currentResult) {
 
 function getRenderableProfile(profile, result=currentResult) {
   if (!(profile && typeof profile.render === 'function')) return null;
-  if (result?.chartFamily === '6400' && CONFINED_6400_VARIANTS[profile.id]) {
-    const variant = CONFINED_6400_VARIANTS[profile.id];
-    return {
-      ...profile,
-      pageSrc: variant.pageSrc,
-      pageImage: variant.pageImage,
-      figureLabel: variant.figureLabel,
-      previewTitle: `${profile.previewTitle.replace(' - página completa do RFM', '')} - página completa do RFM (Supp 12)`,
-      referenceHtml: buildConfinedReferenceHtml(profile.id, '6400')
-    };
-  }
   return profile;
 }
 
@@ -976,7 +931,7 @@ function syncProfileUi() {
   const ref = activeProfile ? activeProfile.referenceHtml : '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
   chartReferenceEl.innerHTML = ref;
   chartHintEl.textContent = procedureEl.value === 'offshore' ? 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.' : 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual e peso máximo interpolado no gráfico principal.';
-  formHintEl.textContent = 'Nos perfis Confined, pesos até 6400 kg usam as cartas do Supplement 12; acima de 6400 kg usam as cartas do Supplement 50.';
+  formHintEl.textContent = 'Nesta build, os perfis Confined usam somente as cartas do Supplement 50. As cartas do Supplement 12 permanecem fora do fluxo ativo.';
   chartBaseImage.src = activeProfile ? activeProfile.pageSrc : 'docs/page-07.png';
   chartBaseImage.alt = activeProfile ? activeProfile.previewTitle : 'Página completa do gráfico WAT';
   updatePdfButtonLabel();
@@ -1007,11 +962,213 @@ function drawOverlay(result) {
   const renderableProfile=getRenderableProfile(activeProfile, result);
   if(!renderableProfile) return;
   if(chartBaseImage.src !== new URL(renderableProfile.pageSrc, window.location.href).href) chartBaseImage.src = renderableProfile.pageSrc;
-  chartBaseImage.alt = renderableProfile.previewTitle;
   const rect=chartCanvas.getBoundingClientRect(); const pageImage=renderableProfile.pageImage; if(!(pageImage.complete&&pageImage.naturalWidth)) return; const aspect=pageImage.naturalWidth/pageImage.naturalHeight; const displayWidth=Math.max(1,Math.round(rect.width||pageImage.naturalWidth)); const displayHeight=Math.max(1,Math.round(displayWidth/aspect)); const dpr=Math.max(1,window.devicePixelRatio||1); chartCanvas.width=Math.round(displayWidth*dpr); chartCanvas.height=Math.round(displayHeight*dpr); chartCanvas.style.height=`${displayHeight}px`; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,displayWidth,displayHeight); const preview = renderableProfile.render(result,{includeFooter:false,includeSummaryBox:true,compactSummaryBox:true}); if(preview) ctx.drawImage(preview,0,0,displayWidth,displayHeight);
 }
 function renderCompositeCanvas(result=currentResult) {
   const renderableProfile=getRenderableProfile(activeProfile, result);
   if(!renderableProfile) return null;
   return renderableProfile.render(result,{includeFooter:true,includeSummaryBox:true});
+}
+
+
+// --- v16.6.1 overrides: reintroduce Confined Supplement 12 below 6400 kg, keeping v16.5 stable base ---
+confinedStandard6400PageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===confinedStandard6400PageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+confinedEapsOff6400PageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===confinedEapsOff6400PageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+confinedEapsOn6400PageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===confinedEapsOn6400PageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+confinedIbf6400PageImage.addEventListener('load', ()=>{ if(activeProfile?.pageImage===confinedIbf6400PageImage && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
+
+function getRenderableProfile(profile, result=currentResult) {
+  if (!(profile && typeof profile.render === 'function')) return null;
+  if (result?.chartFamily === '6400' && CONFINED_6400_VARIANTS[profile.id]) {
+    const variant = CONFINED_6400_VARIANTS[profile.id];
+    return {
+      ...profile,
+      pageSrc: variant.pageSrc,
+      pageImage: variant.pageImage,
+      figureLabel: variant.figureLabel,
+      previewTitle: `${profile.previewTitle.replace(' - página completa do RFM', '')} - página completa do RFM (Supp 12)`,
+      referenceHtml: buildConfinedReferenceHtml(profile.id, '6400')
+    };
+  }
+  return profile;
+}
+
+function syncProfileUi() {
+  activeProfile = getActiveProfile();
+  const ref = activeProfile ? activeProfile.referenceHtml : '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
+  chartReferenceEl.innerHTML = ref;
+  chartHintEl.textContent = procedureEl.value === 'offshore'
+    ? 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.'
+    : 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual e peso máximo interpolado no gráfico principal.';
+  formHintEl.textContent = 'Nos perfis Confined, pesos até 6400 kg usam as cartas do Supplement 12; acima de 6400 kg usam as cartas do Supplement 50.';
+  chartBaseImage.src = activeProfile ? activeProfile.pageSrc : 'docs/page-07.png';
+  chartBaseImage.alt = activeProfile ? activeProfile.previewTitle : 'Página completa do gráfico WAT';
+  updatePdfButtonLabel();
+}
+
+function calculateExactConfinedStandard(paFt,oat,actualWeightKg,headwindKt) {
+  if (actualWeightKg <= 6400) {
+    const low = calculateConfined6400('confined_standard', CONFINED_STANDARD_6400_EXACT, CONFINED_6400_VARIANTS.confined_standard.figureLabel, actualWeightKg, paFt, oat);
+    if (low.error) return { ...low, profileId: 'confined_standard', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_standard', '6400') };
+    return {
+      ...low,
+      profileId: 'confined_standard',
+      chartFamily: '6400',
+      referenceHtml: buildConfinedReferenceHtml('confined_standard', '6400'),
+      resultDescription: 'Resultado calculado com a carta Confined Standard do Supplement 12.'
+    };
+  }
+  const noWind = confinedstd_getNoWindLimit(paFt,oat);
+  if (noWind.error) {
+    return {
+      ...noWind,
+      profileId: 'confined_standard',
+      chartFamily: '6800',
+      referenceHtml: getReferenceHtmlByProfileId('confined_standard')
+    };
+  }
+  return {
+    ...buildConfinedResult('confined_standard', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-4', 'Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.'),
+    referenceHtml: getReferenceHtmlByProfileId('confined_standard'),
+    resultDescription: 'Resultado calculado com a carta Confined Standard do Supplement 50.'
+  };
+}
+
+function calculateExactConfinedEapsOff(paFt,oat,actualWeightKg,headwindKt) {
+  if (actualWeightKg <= 6400) {
+    const low = calculateConfined6400('confined_eaps_off', CONFINED_EAPS_OFF_6400_EXACT, CONFINED_6400_VARIANTS.confined_eaps_off.figureLabel, actualWeightKg, paFt, oat);
+    if (low.error) return { ...low, profileId: 'confined_eaps_off', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_eaps_off', '6400') };
+    return {
+      ...low,
+      profileId: 'confined_eaps_off',
+      chartFamily: '6400',
+      referenceHtml: buildConfinedReferenceHtml('confined_eaps_off', '6400'),
+      resultDescription: 'Resultado calculado com a carta Confined EAPS OFF do Supplement 12.'
+    };
+  }
+  const noWind = confinedeoff_getNoWindLimit(paFt,oat);
+  if (noWind.error) {
+    return {
+      ...noWind,
+      profileId: 'confined_eaps_off',
+      chartFamily: '6800',
+      referenceHtml: getReferenceHtmlByProfileId('confined_eaps_off')
+    };
+  }
+  return {
+    ...buildConfinedResult('confined_eaps_off', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-5', 'Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.'),
+    referenceHtml: getReferenceHtmlByProfileId('confined_eaps_off'),
+    resultDescription: 'Resultado calculado com a carta Confined EAPS OFF do Supplement 50.'
+  };
+}
+
+function calculateExactConfinedEapsOn(paFt,oat,actualWeightKg,headwindKt) {
+  if (actualWeightKg <= 6400) {
+    const low = calculateConfined6400('confined_eaps_on', CONFINED_EAPS_ON_6400_EXACT, CONFINED_6400_VARIANTS.confined_eaps_on.figureLabel, actualWeightKg, paFt, oat);
+    if (low.error) return { ...low, profileId: 'confined_eaps_on', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6400') };
+    return {
+      ...low,
+      profileId: 'confined_eaps_on',
+      chartFamily: '6400',
+      referenceHtml: buildConfinedReferenceHtml('confined_eaps_on', '6400'),
+      resultDescription: 'Resultado calculado com a carta Confined EAPS ON do Supplement 12.'
+    };
+  }
+  const noWind = genericPdfChartNoWindLimit(CONFINED_EAPS_ON_EXACT, paFt, oat, 'Figure 4-6');
+  if (noWind.error) {
+    return {
+      ...noWind,
+      profileId: 'confined_eaps_on',
+      chartFamily: '6800',
+      referenceHtml: getReferenceHtmlByProfileId('confined_eaps_on')
+    };
+  }
+  return {
+    ...buildConfinedResult('confined_eaps_on', noWind, actualWeightKg, paFt, oat, CONFINED_EAPS_ON_EXACT.main.kgMax, '6800', 'Supplement 50 / Figure 4-6', 'Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.'),
+    referenceHtml: getReferenceHtmlByProfileId('confined_eaps_on'),
+    resultDescription: 'Resultado calculado com a carta Confined EAPS ON do Supplement 50.'
+  };
+}
+
+function calculateExactIbfConfinedArea(paFt,oat,actualWeightKg,headwindKt) {
+  if (actualWeightKg <= 6400) {
+    const low = calculateConfined6400('confined_ibf', CONFINED_IBF_6400_EXACT, CONFINED_6400_VARIANTS.confined_ibf.figureLabel, actualWeightKg, paFt, oat);
+    if (low.error) return { ...low, profileId: 'confined_ibf', chartFamily: '6400', referenceHtml: buildConfinedReferenceHtml('confined_ibf', '6400') };
+    return {
+      ...low,
+      profileId: 'confined_ibf',
+      chartFamily: '6400',
+      referenceHtml: buildConfinedReferenceHtml('confined_ibf', '6400'),
+      resultDescription: 'Resultado calculado com a carta Confined IBF do Supplement 12.'
+    };
+  }
+  const noWind = confinedibf_getNoWindLimit(paFt,oat);
+  if (noWind.error) {
+    return {
+      ...noWind,
+      profileId: 'confined_ibf',
+      chartFamily: '6800',
+      referenceHtml: getReferenceHtmlByProfileId('confined_ibf')
+    };
+  }
+  return {
+    ...buildConfinedResult('confined_ibf', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-9B', 'Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.'),
+    referenceHtml: getReferenceHtmlByProfileId('confined_ibf'),
+    resultDescription: 'Resultado calculado com a carta Confined IBF do Supplement 50.'
+  };
+}
+
+function renderConfinedStandardAnnotatedCanvas(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.confined_standard, result);
+  if (result?.chartFamily === '6400') {
+    return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_STANDARD_6400_EXACT, CONFINED_STANDARD_6400_PAGE_PLACEMENT);
+  }
+  return renderGenericNoHeadwindPdfPage(result, options, confinedStandardPageImage, renderProfile, CONFINED_STANDARD_EXACT);
+}
+
+function renderConfinedEapsOffAnnotatedCanvas(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.confined_eaps_off, result);
+  if (result?.chartFamily === '6400') {
+    return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_EAPS_OFF_6400_EXACT, CONFINED_STANDARD_6400_PAGE_PLACEMENT);
+  }
+  return PROFILE_MAP.confined_eaps_off.render === renderConfinedEapsOffAnnotatedCanvas
+    ? (function(result=currentResult, options={}) { if(!confinedEapsOffPageImage.complete||!confinedEapsOffPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=confinedEapsOffPageImage.naturalWidth, baseHeight=confinedEapsOffPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(confinedEapsOffPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const plot=CONFINED_EAPS_OFF_EXACT.plot, main=CONFINED_EAPS_OFF_EXACT.main; const pxX=(x)=>plot.x0 + ((x-main.xMin)/(main.xMax-main.xMin))*(plot.x1-plot.x0); const pxY=(y)=>plot.y0 + ((main.yTopFt-y)/(main.yTopFt-main.yBottomFt))*(plot.y1-plot.y0); if(result && !result.error){ const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447'; const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); }; const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); }; drawPolyline(result.noWind.lowerCurve, amber, 3); if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve, amber, 3); const paY=result.noWind.paY, maxX=result.noWind.noWindX, currentActualX=confinedeoff_kgToX(result.actualWeightKg), currentMaxX=maxX; ex.save(); ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(main.xMin),pxY(paY)); ex.lineTo(pxX(main.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]); ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(main.yBottomFt)); ex.lineTo(pxX(currentActualX),pxY(paY)); ex.stroke(); ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(main.yBottomFt)); ex.lineTo(pxX(currentMaxX),pxY(paY)); ex.stroke(); ex.restore(); const dotRadius=includeFooter?5.5:4.5; marker(maxX,paY,'#ffffff',dotRadius+1); marker(currentActualX,paY,blue,dotRadius); marker(currentActualX,main.yBottomFt,blue,dotRadius-0.5); marker(currentMaxX,main.yBottomFt,withinColor,dotRadius); if(includeSummaryBox){ const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168; ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke(); ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(getRenderableProfile(PROFILE_MAP.confined_eaps_off, result).previewTitle,boxX+22,boxY+(compactSummaryBox?38:40)); ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif'; if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${PROFILE_MAP.confined_eaps_off.procedureLabel} | Configuration: ${PROFILE_MAP.confined_eaps_off.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg`,boxX+22,boxY+106); ex.fillText(`Max ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); } else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C`,boxX+22,boxY+76); ex.fillText(`Max ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); } ex.restore(); } if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',80,legendY+50); ex.fillText(getRenderableProfile(PROFILE_MAP.confined_eaps_off, result).figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); } } return exportCanvas; })(result, options)
+    : null;
+}
+
+function renderConfinedEapsOnAnnotatedCanvas(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.confined_eaps_on, result);
+  if (result?.chartFamily === '6400') {
+    return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_EAPS_ON_6400_EXACT, CONFINED_STANDARD_6400_PAGE_PLACEMENT);
+  }
+  return renderGenericNoHeadwindPlacedPage(result, options, confinedEapsOnPageImage, renderProfile, CONFINED_EAPS_ON_EXACT, EAPS_PAGE_PLACEMENT);
+}
+
+function renderConfinedIbfAnnotatedCanvas(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.confined_ibf, result);
+  if (result?.chartFamily === '6400') {
+    return renderGenericNoHeadwindPlacedPage(result, options, renderProfile.pageImage, renderProfile, CONFINED_IBF_6400_EXACT, CONFINED_STANDARD_6400_PAGE_PLACEMENT);
+  }
+  return PROFILE_MAP.confined_ibf.render === renderConfinedIbfAnnotatedCanvas
+    ? (function(result=currentResult, options={}) { if(!confinedIbfPageImage.complete||!confinedIbfPageImage.naturalWidth) return null; const includeFooter=options.includeFooter??true, includeSummaryBox=options.includeSummaryBox??true, compactSummaryBox=options.compactSummaryBox??false; const baseWidth=confinedIbfPageImage.naturalWidth, baseHeight=confinedIbfPageImage.naturalHeight, footerExtra=includeFooter?190:0; const exportCanvas=document.createElement('canvas'); exportCanvas.width=baseWidth; exportCanvas.height=baseHeight+footerExtra; const ex=exportCanvas.getContext('2d'); ex.fillStyle='#ffffff'; ex.fillRect(0,0,exportCanvas.width,exportCanvas.height); ex.drawImage(confinedIbfPageImage,0,0); if(includeFooter){ ex.fillStyle='#ffffff'; ex.fillRect(0,baseHeight,baseWidth,footerExtra); } const pxX=(x)=>CONFINED_IBF_PAGE_PLACEMENT.offsetX + (x * CONFINED_IBF_PAGE_PLACEMENT.scaleX); const pxY=(y)=>CONFINED_IBF_PAGE_PLACEMENT.offsetY + (y * CONFINED_IBF_PAGE_PLACEMENT.scaleY); if(result && !result.error){ const withinColor=result.within?'#14b86a':'#df4f5f'; const blue='#52a8ff'; const amber='#f3b447'; const drawPolyline=(points,color,lineWidth=2,dashed=false)=>{ if(!points?.length) return; ex.save(); ex.beginPath(); ex.setLineDash(dashed?[10,8]:[]); ex.strokeStyle=color; ex.lineWidth=lineWidth; points.forEach((point,index)=>{ const x=pxX(point.x), y=pxY(point.y); if(index===0) ex.moveTo(x,y); else ex.lineTo(x,y); }); ex.stroke(); ex.restore(); }; const marker=(xData,yData,color,radius=7)=>{ const x=pxX(xData), y=pxY(yData); ex.save(); ex.fillStyle=color; ex.strokeStyle='#081019'; ex.lineWidth=2; ex.beginPath(); ex.arc(x,y,radius,0,Math.PI*2); ex.fill(); ex.stroke(); ex.restore(); }; drawPolyline(result.noWind.lowerCurve, amber, 3); if(result.noWind.upperTemp!==result.noWind.lowerTemp) drawPolyline(result.noWind.upperCurve, amber, 3); const paY=result.noWind.paY, maxX=result.noWind.noWindX, currentActualX=confinedibf_kgToX(result.actualWeightKg), currentMaxX=maxX; ex.save(); ex.strokeStyle='#ffffff'; ex.lineWidth=2.5; ex.setLineDash([12,10]); ex.beginPath(); ex.moveTo(pxX(CONFINED_IBF_EXACT.main.xMin),pxY(paY)); ex.lineTo(pxX(CONFINED_IBF_EXACT.main.xMax),pxY(paY)); ex.stroke(); ex.setLineDash([]); ex.strokeStyle=blue; ex.beginPath(); ex.moveTo(pxX(currentActualX),pxY(CONFINED_IBF_EXACT.main.yBottomFt)); ex.lineTo(pxX(currentActualX),pxY(paY)); ex.stroke(); ex.strokeStyle=withinColor; ex.beginPath(); ex.moveTo(pxX(currentMaxX),pxY(CONFINED_IBF_EXACT.main.yBottomFt)); ex.lineTo(pxX(currentMaxX),pxY(paY)); ex.stroke(); ex.restore(); const dotRadius=includeFooter?5.5:4.5; marker(maxX,paY,'#ffffff',dotRadius+1); marker(currentActualX,paY,blue,dotRadius); marker(currentActualX,CONFINED_IBF_EXACT.main.yBottomFt,blue,dotRadius-0.5); marker(currentMaxX,CONFINED_IBF_EXACT.main.yBottomFt,withinColor,dotRadius); if(includeSummaryBox){ const boxX=compactSummaryBox?72:56, boxY=compactSummaryBox?58:56, boxW=compactSummaryBox?900:940, boxH=compactSummaryBox?126:168; ex.save(); ex.fillStyle=compactSummaryBox?'rgba(36,42,51,0.86)':'rgba(255,255,255,0.88)'; ex.strokeStyle=compactSummaryBox?'rgba(255,255,255,0.08)':'rgba(8,16,25,0.16)'; ex.lineWidth=1; ex.beginPath(); roundRect(ex,boxX,boxY,boxW,boxH,compactSummaryBox?24:18); ex.fill(); ex.stroke(); ex.fillStyle=compactSummaryBox?'#f2f5fb':'#081019'; ex.font=compactSummaryBox?'700 24px Inter, system-ui, sans-serif':'700 28px Inter, system-ui, sans-serif'; ex.fillText(getRenderableProfile(PROFILE_MAP.confined_ibf, result).previewTitle,boxX+22,boxY+(compactSummaryBox?38:40)); ex.font=compactSummaryBox?'18px Inter, system-ui, sans-serif':'20px Inter, system-ui, sans-serif'; if(!compactSummaryBox){ ex.fillStyle='#223247'; ex.fillText(`Procedure: ${PROFILE_MAP.confined_ibf.procedureLabel} | Configuration: ${PROFILE_MAP.confined_ibf.configLabel}`,boxX+22,boxY+76); ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C | WT ${Math.round(result.actualWeightKg)} kg`,boxX+22,boxY+106); ex.fillText(`Max ${Math.round(result.maxWeight)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+22,boxY+136); } else { ex.fillStyle='#d8e2f0'; ex.fillText(`PA ${Math.round(result.paFt)} ft | OAT ${result.oat}°C`,boxX+22,boxY+76); ex.fillText(`Max ${Math.round(result.maxWeight)} kg`,boxX+22,boxY+106); ex.fillStyle=result.within?'#7ef0b0':'#ff8b98'; ex.fillText(`WT ${Math.round(result.actualWeightKg)} kg | Margin ${result.margin>=0?'+':''}${Math.round(result.margin)} kg`,boxX+520,boxY+106); } ex.restore(); } if(includeFooter){ const legendY=baseHeight+36; drawLegendRow(ex,80,legendY,[{color:'#ffffff',label:'Max weight interpolado'},{color:'#52a8ff',label:'Peso atual'},{color:'#14b86a',label:'Dentro'},{color:'#df4f5f',label:'Fora'}]); ex.save(); ex.fillStyle='#223247'; ex.font='18px Inter, system-ui, sans-serif'; ex.fillText('Fonte: Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',80,legendY+50); ex.fillText(getRenderableProfile(PROFILE_MAP.confined_ibf, result).figureLabel,80,legendY+78); ex.fillText('Sempre consulte as publicações oficiais e atualizadas. Esta ferramenta não as substitui.',80,legendY+106); ex.restore(); } } return exportCanvas; })(result, options)
+    : null;
+}
+
+
+const PROFILE_META_CONFINED_6400 = {
+  confined_standard: { supplement: 'Supplement 12', page: 'S12-D32' },
+  confined_eaps_off: { supplement: 'Supplement 12', page: 'S12-D33' },
+  confined_eaps_on: { supplement: 'Supplement 12', page: 'S12-D34' },
+  confined_ibf: { supplement: 'Supplement 12', page: 'S12-D34A' }
+};
+function buildReferenceHtmlFromMeta(figureLabel, meta = {}) {
+  return `<strong>Gráfico em uso:</strong> ${figureLabel}<br><strong>Suplemento:</strong> ${meta.supplement || '—'}<br><strong>Página:</strong> ${meta.page || '—'}<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.`;
+}
+function buildConfinedReferenceHtml(profileId, chartFamily = '6800') {
+  const baseProfile = PROFILE_MAP[profileId];
+  if (!baseProfile) return '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
+  if (chartFamily === '6400' && CONFINED_6400_VARIANTS[profileId]) {
+    return buildReferenceHtmlFromMeta(CONFINED_6400_VARIANTS[profileId].figureLabel, PROFILE_META_CONFINED_6400[profileId] || {});
+  }
+  return buildReferenceHtml(baseProfile);
 }
