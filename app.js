@@ -829,7 +829,7 @@ function buildConfinedResult(profileId, noWind, actualWeightKg, paFt, oat, maxKg
 function calculateConfined6400(profileId, data, figureLabel, actualWeightKg, paFt, oat) {
   const noWind = genericPdfChartNoWindLimit(data, paFt, oat, figureLabel);
   if (noWind.error) return noWind;
-  return buildConfinedResult(profileId, noWind, actualWeightKg, paFt, oat, data.main.kgMax, '6400', `Supplement 12 / ${figureLabel}`, figureLabel);
+  return buildConfinedResult(profileId, noWind, actualWeightKg, paFt, oat, 6400, '6400', `Supplement 12 / ${figureLabel}`, figureLabel);
 }
 function chooseConfinedResult(profileId, actualWeightKg, preferredResult, fallbackResult, preferredFamily) {
   if (preferredResult && !preferredResult.error) return preferredResult;
