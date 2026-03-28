@@ -1,8 +1,14 @@
-Build v16.2
+Build v16.3
 
 Confined Area: Supplement 50 only.
 
-# WAC 6800 Unified
+Ajustes globais v16.3:
+- nomenclatura principal atualizada de WAC para WAT
+- referência do gráfico agora mostra Figure + Supplement + Page
+- fonte padronizada para Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32
+- Pressure Altitude e OAT aceitam entrada negativa
+
+# WAT 6800 Unified
 
 Perfis integrados:
 - Offshore Helideck — Standard
