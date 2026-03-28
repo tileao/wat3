@@ -1,6 +1,7 @@
-Build v16.2
+Build v16.6
 
-Confined Area: Supplement 50 only.
+Confined Area: Supplement 12 até 6400 kg; Supplement 50 acima de 6400 kg.
+
 
 # WAT 6800 Unified
 

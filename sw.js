@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wat6800-allprofiles-v16-5-reference-and-minus';
+const CACHE_NAME = 'wat6800-allprofiles-v16-6-confined6400-return';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v16_5-reference-and-minus',
+  './app.js?v=allprofiles-v16_6-confined6400-return',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
