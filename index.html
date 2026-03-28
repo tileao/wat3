@@ -14,8 +14,8 @@
       <div>
         <p class="eyebrow">AW139</p>
         <h1>WAT 6800</h1>
-        <p class="subtitle">Envelope check com base nas WAT Charts</p>
-        <p class="build-version">Build v16.3</p>
+        <p class="subtitle">Envelope check com base nos WAT Charts</p>
+        <p class="build-version">Build v16.4</p>
       </div>
       <button id="installBtn" class="ghost hidden">Instalar</button>
     </header>
@@ -52,12 +52,18 @@
 
         <label class="field-half compact-field">
           <span>Pressure Altitude (ft)</span>
-          <input id="pressureAltitude" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" autocapitalize="off" placeholder="ex. -500">
+          <div class="input-with-toggle">
+            <input id="pressureAltitude" type="text" inputmode="numeric" enterkeyhint="next" autocomplete="off" placeholder="ex. 1200">
+            <button id="paNegativeBtn" type="button" class="sign-toggle" aria-label="Alternar sinal da altitude pressão">±</button>
+          </div>
         </label>
 
         <label class="field-half compact-field narrow-field">
           <span>OAT (°C)</span>
-          <input id="oat" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" autocapitalize="off" placeholder="ex. -10" maxlength="4">
+          <div class="input-with-toggle">
+            <input id="oat" type="text" inputmode="numeric" enterkeyhint="next" autocomplete="off" placeholder="ex. 28" maxlength="3">
+            <button id="oatNegativeBtn" type="button" class="sign-toggle" aria-label="Alternar sinal da temperatura">±</button>
+          </div>
         </label>
 
         <label class="field-half compact-field">
@@ -119,7 +125,7 @@
           <span><i class="dot red"></i> Fora</span>
         </div>
         <p id="chartHint" class="hint">Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.</p>
-        <p id="chartReference" class="chart-reference"><strong>Gráfico em uso:</strong> Figure 4-7 — Weight Limitations for CAT A Offshore Helideck Procedure.<br><strong>Suplemento/Página:</strong> Supplement 50 — Page S50-30.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.</p>
+        <p id="chartReference" class="chart-reference"><strong>Gráfico em uso:</strong> Figure 4-7 — Weight Limitations for CAT A Offshore Helideck Procedure.<br><strong>Suplemento:</strong> Supplement 50<br><strong>Página:</strong> S50-30<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.</p>
       </div>
     </section>
 
@@ -134,6 +140,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=allprofiles-v16_3-wat-global" defer></script>
+  <script src="app.js?v=allprofiles-v16_4-globalfixes" defer></script>
 </body>
 </html>

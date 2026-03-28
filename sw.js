@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wat6800-allprofiles-v16-3-global-labels';
+const CACHE_NAME = 'wat6800-allprofiles-v16-4-globalfixes';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v16_3-wat-global',
+  './app.js?v=allprofiles-v16_4-globalfixes',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',

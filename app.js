@@ -7,6 +7,8 @@ const oatEl = document.getElementById('oat');
 const weightEl = document.getElementById('actualWeight');
 const headwindEl = document.getElementById('headwind');
 const headwindWrap = document.getElementById('headwindWrap');
+const paNegativeBtn = document.getElementById('paNegativeBtn');
+const oatNegativeBtn = document.getElementById('oatNegativeBtn');
 const runBtn = document.getElementById('runBtn');
 const demoBtn = document.getElementById('demoBtn');
 const toggleChart = document.getElementById('toggleChart');
@@ -37,7 +39,7 @@ const CONFINED_STANDARD_PAGE_PLACEMENT = { offsetX: 198.648, offsetY: 223.436, s
 const CONFINED_STANDARD_6400_PAGE_PLACEMENT = { offsetX: 0.0, offsetY: 0.0, scaleX: 1323.0 / 419.0, scaleY: 1872.0 / 596.0 };
 const CONFINED_STANDARD_STITCHED_PAGE_PLACEMENT = { xMin: 153.5, xMax: 1556.0, yTop: 88.0, yBottom: 878.0, kgMin: 5200, kgMax: 6900, ftMin: 0, ftMax: 10000 };
 
-const CONFINED_STANDARD_EXACT = {"sourcePdf": "WAC charts 6800.pdf", "figure": "Figure 4-4", "page": {"width": 419.0, "height": 596.0, "index": 4}, "main": {"xMin": 123.368, "xMax": 336.136, "kgMin": 6400, "kgMax": 6900, "yTopFt": 174.813, "yBottomFt": 458.504, "yMinFt": -1000, "yMaxFt": 7000}, "tempCurves": {"-30": [[123.368, 190.198], [144.359, 221.353], [150.73, 224.434], [195.788, 246.104], [200.028, 248.099], [204.261, 250.088], [208.478, 252.066], [212.671, 254.031], [216.832, 255.979], [220.953, 257.905], [225.024, 259.806], [229.038, 261.679], [232.987, 263.519], [236.861, 265.323], [240.653, 267.087], [244.354, 268.808], [247.956, 270.481], [251.451, 272.102], [254.83, 273.669], [258.085, 275.178], [261.207, 276.623], [264.188, 278.003], [267.02, 279.313], [269.695, 280.549], [272.203, 281.708], [274.537, 282.786], [276.689, 283.778], [278.649, 284.683], [280.411, 285.494], [281.964, 286.21], [283.302, 286.826], [284.415, 287.338], [285.295, 287.743], [285.934, 288.037], [286.323, 288.216], [286.455, 288.277], [293.535, 291.817], [293.535, 458.504]], "-20": [[123.868, 228.2], [144.859, 259.355], [145.15, 259.896], [152.47, 263.436], [197.174, 285.132], [201.385, 287.122], [205.588, 289.105], [209.775, 291.08], [213.939, 293.041], [218.07, 294.985], [222.161, 296.908], [226.203, 298.807], [230.189, 300.678], [234.108, 302.516], [237.954, 304.319], [241.718, 306.082], [245.392, 307.801], [248.968, 309.474], [252.437, 311.095], [255.79, 312.662], [259.021, 314.17], [262.119, 315.616], [265.078, 316.996], [267.889, 318.307], [270.543, 319.544], [273.033, 320.703], [275.349, 321.782], [277.484, 322.775], [279.43, 323.68], [281.177, 324.493], [282.719, 325.209], [284.046, 325.826], [285.15, 326.339], [286.024, 326.745], [286.658, 327.039], [287.044, 327.218], [287.175, 327.279], [293.535, 330.819], [293.535, 458.504]], "-10": [[124.002, 265.269], [144.993, 296.424], [144.507, 296.536], [149.349, 298.897], [193.682, 320.598], [197.856, 322.585], [202.022, 324.567], [206.174, 326.54], [210.301, 328.5], [214.397, 330.443], [218.453, 332.365], [222.46, 334.263], [226.411, 336.133], [230.297, 337.971], [234.11, 339.773], [237.842, 341.536], [241.485, 343.255], [245.03, 344.927], [248.469, 346.549], [251.794, 348.116], [254.997, 349.625], [258.07, 351.071], [261.004, 352.452], [263.791, 353.762], [266.422, 355.0], [268.891, 356.16], [271.188, 357.239], [273.305, 358.233], [275.234, 359.139], [276.967, 359.952], [278.496, 360.669], [279.812, 361.286], [280.907, 361.799], [281.773, 362.205], [282.402, 362.5], [282.785, 362.679], [282.915, 362.74], [290.535, 366.28], [293.535, 369.82], [293.535, 458.504]], "0": [[123.935, 301.002], [144.926, 332.157], [144.381, 332.3], [148.57, 334.359], [192.574, 356.041], [196.714, 358.031], [200.847, 360.015], [204.964, 361.99], [209.059, 363.952], [213.122, 365.897], [217.145, 367.82], [221.121, 369.72], [225.041, 371.591], [228.896, 373.43], [232.68, 375.233], [236.383, 376.996], [239.997, 378.716], [243.515, 380.389], [246.928, 382.011], [250.228, 383.579], [253.406, 385.087], [256.456, 386.534], [259.367, 387.915], [262.133, 389.225], [264.745, 390.463], [267.195, 391.623], [269.475, 392.702], [271.576, 393.696], [273.491, 394.601], [275.211, 395.414], [276.729, 396.131], [278.035, 396.748], [279.122, 397.261], [279.982, 397.666], [280.606, 397.961], [280.986, 398.14], [281.115, 398.201], [288.675, 401.742], [293.535, 405.282], [293.535, 458.504]], "10": [[122.935, 335.503], [143.926, 366.658], [144.468, 367.133], [149.89, 369.82], [193.631, 391.471], [197.747, 393.466], [201.856, 395.455], [205.95, 397.435], [210.021, 399.4], [214.061, 401.348], [218.061, 403.275], [222.014, 405.177], [225.911, 407.051], [229.744, 408.892], [233.505, 410.696], [237.187, 412.461], [240.78, 414.182], [244.277, 415.856], [247.67, 417.479], [250.95, 419.047], [254.11, 420.556], [257.142, 422.002], [260.036, 423.383], [262.786, 424.693], [265.382, 425.93], [267.818, 427.09], [270.084, 428.168], [272.173, 429.161], [274.077, 430.066], [275.786, 430.879], [277.295, 431.595], [278.593, 432.211], [279.674, 432.724], [280.528, 433.129], [281.149, 433.423], [281.527, 433.602], [281.655, 433.663], [289.095, 437.203], [293.535, 440.743], [293.535, 458.504]], "20": [[123.435, 369.504], [144.426, 400.659], [144.546, 400.961], [146.109, 401.742], [182.144, 419.719], [185.53, 421.386], [188.911, 423.047], [192.279, 424.7], [195.629, 426.341], [198.953, 427.967], [202.244, 429.575], [205.497, 431.163], [208.704, 432.726], [211.859, 434.261], [214.954, 435.767], [217.984, 437.238], [220.942, 438.674], [223.821, 440.069], [226.613, 441.422], [229.314, 442.728], [231.915, 443.986], [234.41, 445.192], [236.793, 446.342], [239.057, 447.434], [241.195, 448.464], [243.2, 449.43], [245.066, 450.328], [246.786, 451.156], [248.353, 451.909], [249.761, 452.586], [251.003, 453.182], [252.072, 453.695], [252.962, 454.122], [253.665, 454.46], [254.176, 454.704], [254.488, 454.854], [254.593, 454.904], [261.913, 458.504]], "30": [[123.569, 402.64], [144.56, 433.795], [144.189, 433.663], [151.21, 437.203], [165.37, 444.283], [186.791, 454.904], [193.931, 458.504]], "40": [[123.936, 434.006], [140.333, 458.344]]}};
+const CONFINED_STANDARD_EXACT = {"sourcePdf": "WAT charts 6800.pdf", "figure": "Figure 4-4", "page": {"width": 419.0, "height": 596.0, "index": 4}, "main": {"xMin": 123.368, "xMax": 336.136, "kgMin": 6400, "kgMax": 6900, "yTopFt": 174.813, "yBottomFt": 458.504, "yMinFt": -1000, "yMaxFt": 7000}, "tempCurves": {"-30": [[123.368, 190.198], [144.359, 221.353], [150.73, 224.434], [195.788, 246.104], [200.028, 248.099], [204.261, 250.088], [208.478, 252.066], [212.671, 254.031], [216.832, 255.979], [220.953, 257.905], [225.024, 259.806], [229.038, 261.679], [232.987, 263.519], [236.861, 265.323], [240.653, 267.087], [244.354, 268.808], [247.956, 270.481], [251.451, 272.102], [254.83, 273.669], [258.085, 275.178], [261.207, 276.623], [264.188, 278.003], [267.02, 279.313], [269.695, 280.549], [272.203, 281.708], [274.537, 282.786], [276.689, 283.778], [278.649, 284.683], [280.411, 285.494], [281.964, 286.21], [283.302, 286.826], [284.415, 287.338], [285.295, 287.743], [285.934, 288.037], [286.323, 288.216], [286.455, 288.277], [293.535, 291.817], [293.535, 458.504]], "-20": [[123.868, 228.2], [144.859, 259.355], [145.15, 259.896], [152.47, 263.436], [197.174, 285.132], [201.385, 287.122], [205.588, 289.105], [209.775, 291.08], [213.939, 293.041], [218.07, 294.985], [222.161, 296.908], [226.203, 298.807], [230.189, 300.678], [234.108, 302.516], [237.954, 304.319], [241.718, 306.082], [245.392, 307.801], [248.968, 309.474], [252.437, 311.095], [255.79, 312.662], [259.021, 314.17], [262.119, 315.616], [265.078, 316.996], [267.889, 318.307], [270.543, 319.544], [273.033, 320.703], [275.349, 321.782], [277.484, 322.775], [279.43, 323.68], [281.177, 324.493], [282.719, 325.209], [284.046, 325.826], [285.15, 326.339], [286.024, 326.745], [286.658, 327.039], [287.044, 327.218], [287.175, 327.279], [293.535, 330.819], [293.535, 458.504]], "-10": [[124.002, 265.269], [144.993, 296.424], [144.507, 296.536], [149.349, 298.897], [193.682, 320.598], [197.856, 322.585], [202.022, 324.567], [206.174, 326.54], [210.301, 328.5], [214.397, 330.443], [218.453, 332.365], [222.46, 334.263], [226.411, 336.133], [230.297, 337.971], [234.11, 339.773], [237.842, 341.536], [241.485, 343.255], [245.03, 344.927], [248.469, 346.549], [251.794, 348.116], [254.997, 349.625], [258.07, 351.071], [261.004, 352.452], [263.791, 353.762], [266.422, 355.0], [268.891, 356.16], [271.188, 357.239], [273.305, 358.233], [275.234, 359.139], [276.967, 359.952], [278.496, 360.669], [279.812, 361.286], [280.907, 361.799], [281.773, 362.205], [282.402, 362.5], [282.785, 362.679], [282.915, 362.74], [290.535, 366.28], [293.535, 369.82], [293.535, 458.504]], "0": [[123.935, 301.002], [144.926, 332.157], [144.381, 332.3], [148.57, 334.359], [192.574, 356.041], [196.714, 358.031], [200.847, 360.015], [204.964, 361.99], [209.059, 363.952], [213.122, 365.897], [217.145, 367.82], [221.121, 369.72], [225.041, 371.591], [228.896, 373.43], [232.68, 375.233], [236.383, 376.996], [239.997, 378.716], [243.515, 380.389], [246.928, 382.011], [250.228, 383.579], [253.406, 385.087], [256.456, 386.534], [259.367, 387.915], [262.133, 389.225], [264.745, 390.463], [267.195, 391.623], [269.475, 392.702], [271.576, 393.696], [273.491, 394.601], [275.211, 395.414], [276.729, 396.131], [278.035, 396.748], [279.122, 397.261], [279.982, 397.666], [280.606, 397.961], [280.986, 398.14], [281.115, 398.201], [288.675, 401.742], [293.535, 405.282], [293.535, 458.504]], "10": [[122.935, 335.503], [143.926, 366.658], [144.468, 367.133], [149.89, 369.82], [193.631, 391.471], [197.747, 393.466], [201.856, 395.455], [205.95, 397.435], [210.021, 399.4], [214.061, 401.348], [218.061, 403.275], [222.014, 405.177], [225.911, 407.051], [229.744, 408.892], [233.505, 410.696], [237.187, 412.461], [240.78, 414.182], [244.277, 415.856], [247.67, 417.479], [250.95, 419.047], [254.11, 420.556], [257.142, 422.002], [260.036, 423.383], [262.786, 424.693], [265.382, 425.93], [267.818, 427.09], [270.084, 428.168], [272.173, 429.161], [274.077, 430.066], [275.786, 430.879], [277.295, 431.595], [278.593, 432.211], [279.674, 432.724], [280.528, 433.129], [281.149, 433.423], [281.527, 433.602], [281.655, 433.663], [289.095, 437.203], [293.535, 440.743], [293.535, 458.504]], "20": [[123.435, 369.504], [144.426, 400.659], [144.546, 400.961], [146.109, 401.742], [182.144, 419.719], [185.53, 421.386], [188.911, 423.047], [192.279, 424.7], [195.629, 426.341], [198.953, 427.967], [202.244, 429.575], [205.497, 431.163], [208.704, 432.726], [211.859, 434.261], [214.954, 435.767], [217.984, 437.238], [220.942, 438.674], [223.821, 440.069], [226.613, 441.422], [229.314, 442.728], [231.915, 443.986], [234.41, 445.192], [236.793, 446.342], [239.057, 447.434], [241.195, 448.464], [243.2, 449.43], [245.066, 450.328], [246.786, 451.156], [248.353, 451.909], [249.761, 452.586], [251.003, 453.182], [252.072, 453.695], [252.962, 454.122], [253.665, 454.46], [254.176, 454.704], [254.488, 454.854], [254.593, 454.904], [261.913, 458.504]], "30": [[123.569, 402.64], [144.56, 433.795], [144.189, 433.663], [151.21, 437.203], [165.37, 444.283], [186.791, 454.904], [193.931, 458.504]], "40": [[123.936, 434.006], [140.333, 458.344]]}};
 
 const CLEARAREA_IBF_EXACT = {"main":{"xMin":119.574,"xMax":337.268,"kgMin":6400,"kgMax":6900,"yTopFt":175.095,"yBottomFt":469.594,"yMinFt":-1000,"yMaxFt":8000},"tempCurves":{"-30":[[293.585,469.834],[293.585,181.575],[292.865,178.215],[289.745,175.095]],"-20":[[293.585,469.834],[293.585,214.218],[292.385,210.858],[282.784,201.257],[279.663,197.896],[276.543,194.537],[273.184,191.417],[266.944,184.696],[263.583,181.575],[260.463,178.215],[257.103,175.095]],"0":[[293.585,469.834],[293.585,246.859],[292.625,243.74],[289.505,240.379],[284.475,235.112],[279.428,229.86],[274.365,224.623],[269.286,219.402],[264.19,214.197],[259.077,209.008],[253.949,203.835],[248.804,198.678],[243.642,193.538],[238.465,188.413],[233.271,183.306],[228.061,178.215],[224.7,175.095]],"10":[[293.585,469.834],[293.585,276.381],[290.945,273.261],[286.241,268.246],[281.514,263.255],[276.765,258.284],[271.997,253.333],[267.211,248.4],[262.409,243.482],[257.591,238.579],[252.761,233.689],[247.92,228.809],[243.068,223.939],[238.208,219.075],[233.342,214.218],[229.981,210.858],[225.18,207.737],[213.9,204.377],[206.422,202.257],[198.95,200.117],[191.482,197.96],[184.019,195.789],[176.56,193.606],[169.102,191.414],[161.647,189.215],[154.193,187.013],[146.74,184.809],[139.286,182.606],[131.831,180.407],[124.374,178.215],[119.574,176.775]],"20":[[293.585,469.834],[293.585,309.024],[293.105,305.903],[289.985,302.543],[286.573,298.993],[283.168,295.437],[279.769,291.878],[276.373,288.317],[272.976,284.757],[269.575,281.201],[266.169,277.65],[262.753,274.108],[259.325,270.575],[255.883,267.055],[252.423,263.549],[248.942,260.061],[245.821,256.7],[238.862,253.58],[227.341,250.22],[218.669,247.679],[209.984,245.171],[201.29,242.689],[192.587,240.23],[183.879,237.787],[175.167,235.355],[166.454,232.929],[157.74,230.504],[149.03,228.073],[140.324,225.632],[131.625,223.176],[122.934,220.698],[119.574,219.738]],"30":[[293.585,469.834],[293.585,338.546],[292.865,335.426],[289.745,332.065],[282.065,328.705],[270.543,325.585],[258.274,321.983],[246.0,318.401],[233.72,314.837],[221.437,311.284],[209.152,307.741],[196.864,304.203],[184.577,300.666],[172.291,297.126],[160.006,293.579],[147.724,290.022],[135.446,286.451],[123.174,282.861],[119.574,281.901]],"40":[[293.585,469.834],[293.585,426.87],[282.305,423.75],[269.693,420.282],[257.066,416.871],[244.426,413.509],[231.775,410.19],[219.115,406.907],[206.447,403.655],[193.773,400.425],[181.095,397.212],[168.414,394.008],[155.733,390.808],[143.052,387.603],[130.374,384.389],[119.574,381.748]]},"limits":{"maxOat":[],"hdLimit":[]}};
 
@@ -191,7 +193,7 @@ const PROFILE_MAP = {
     previewTitle: 'Confined Area Standard - página completa do RFM',
     procedureLabel: 'Confined Area', configLabel: 'Standard',
     figureLabel: 'Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.',
-    referenceHtml: PROFILE_MAP.confined_standard.referenceHtml,
+    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',
     calculate: calculateExactConfinedStandard,
     render: renderConfinedStandardAnnotatedCanvas,
     statusBadge: 'EXATO PDF CONFINED STD',
@@ -203,7 +205,7 @@ const PROFILE_MAP = {
     previewTitle: 'Confined Area EAPS OFF - página completa do RFM',
     procedureLabel: 'Confined Area', configLabel: 'EAPS OFF',
     figureLabel: 'Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.',
-    referenceHtml: PROFILE_MAP.confined_eaps_off.referenceHtml,
+    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',
     calculate: calculateExactConfinedEapsOff,
     render: renderConfinedEapsOffAnnotatedCanvas,
     statusBadge: 'EXATO PDF CONFINED EAPS OFF',
@@ -215,7 +217,7 @@ const PROFILE_MAP = {
     previewTitle: 'Confined Area EAPS ON - página completa do RFM',
     procedureLabel: 'Confined Area', configLabel: 'EAPS ON',
     figureLabel: 'Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.',
-    referenceHtml: PROFILE_MAP.confined_eaps_on.referenceHtml,
+    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',
     calculate: calculateExactConfinedEapsOn,
     render: renderConfinedEapsOnAnnotatedCanvas,
     statusBadge: 'EXATO PDF CONFINED EAPS ON',
@@ -227,7 +229,7 @@ const PROFILE_MAP = {
     previewTitle: 'IBF Installed - CAT A Confined Area - página completa do RFM',
     procedureLabel: 'Confined Area', configLabel: 'IBF Installed',
     figureLabel: 'Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.',
-    referenceHtml: PROFILE_MAP.confined_ibf.referenceHtml,
+    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.',
     calculate: calculateExactIbfConfinedArea,
     render: renderConfinedIbfAnnotatedCanvas,
     statusBadge: 'EXATO PDF IBF CONFINED',
@@ -235,7 +237,7 @@ const PROFILE_MAP = {
   }
 };
 
-const PROFILE_SOURCE_META = {
+const PROFILE_META = {
   offshore_standard: { supplement: 'Supplement 50', page: 'S50-30' },
   offshore_eaps_off: { supplement: 'Supplement 50', page: 'S50-31' },
   offshore_eaps_on: { supplement: 'Supplement 50', page: 'S50-32' },
@@ -250,16 +252,13 @@ const PROFILE_SOURCE_META = {
   confined_ibf: { supplement: 'Supplement 50', page: 'S50-32B' }
 };
 
-function buildProfileReferenceHtml(profileId, figureLabel) {
-  const meta = PROFILE_SOURCE_META[profileId];
-  const sourceLine = meta
-    ? `<strong>Suplemento/Página:</strong> ${meta.supplement} — Page ${meta.page}.<br>`
-    : '';
-  return `<strong>Gráfico em uso:</strong> ${figureLabel}<br>${sourceLine}<strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.`;
+function buildReferenceHtml(profile) {
+  const meta = PROFILE_META[profile.id] || {};
+  return `<strong>Gráfico em uso:</strong> ${profile.figureLabel}<br><strong>Suplemento:</strong> ${meta.supplement || '—'}<br><strong>Página:</strong> ${meta.page || '—'}<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.`;
 }
 
 Object.values(PROFILE_MAP).forEach((profile) => {
-  profile.referenceHtml = buildProfileReferenceHtml(profile.id, profile.figureLabel);
+  profile.referenceHtml = buildReferenceHtml(profile);
 });
 
 let currentResult = null;
@@ -281,16 +280,29 @@ function sanitizeDigitsInput(el, maxLen = null) {
   const digits = raw.replace(/[^0-9]/g, '');
   el.value = negative + (maxLen ? digits.slice(0, maxLen) : digits);
 }
+function toggleSignedInput(el, maxLen = null) {
+  const raw = String(el.value ?? '').trim();
+  const wantsNegative = !raw.startsWith('-');
+  const digits = raw.replace(/[^0-9]/g, '');
+  el.value = `${wantsNegative ? '-' : ''}${maxLen ? digits.slice(0, maxLen) : digits}`;
+  el.focus();
+  const caret = el.value.length;
+  try { el.setSelectionRange(caret, caret); } catch (_) {}
+}
+
 function canAdvance(rule) {
   if (rule.offshoreOnly === true && procedureEl.value !== 'offshore') return false;
   if (rule.offshoreOnly === false && procedureEl.value === 'offshore') return false;
   const raw = String(rule.el.value ?? '');
   const digits = raw.replace(/[^0-9]/g, '');
-  if (rule.el === oatEl) return raw.trim().startsWith('-') ? digits.length >= 1 : digits.length === rule.minDigits;
+  if (rule.el === oatEl) return digits.length === rule.minDigits;
   return digits.length >= rule.minDigits;
 }
 function focusNext(target) { if (!target) return; if (target === runBtn) { runBtn.focus(); return; } target.focus(); target.select?.(); }
 function setupAutoAdvance() { autoAdvanceRules.forEach((rule) => { rule.el.addEventListener('input', () => { if (rule.el === oatEl) sanitizeDigitsInput(oatEl, 2); if (rule.el === paEl) sanitizeDigitsInput(paEl, 5); if (rule.el === weightEl) sanitizeDigitsInput(weightEl, 4); if (rule.el === headwindEl) sanitizeDigitsInput(headwindEl, 2); if (canAdvance(rule)) focusNext(rule.next); }); rule.el.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); focusNext(rule.next); } }); }); }
+paNegativeBtn?.addEventListener('click', () => { toggleSignedInput(paEl, 5); });
+oatNegativeBtn?.addEventListener('click', () => { toggleSignedInput(oatEl, 2); });
+
 function toggleHeadwind() { const offshore = procedureEl.value === 'offshore'; headwindWrap.classList.toggle('hidden', !offshore); headwindEl.disabled = !offshore; if (!offshore) headwindEl.value = ''; }
 function getActiveProfile() { const key = `${procedureEl.value}_${configurationEl.value}`; return PROFILE_MAP[key] || null; }
 function syncProfileUi() { activeProfile = getActiveProfile(); const ref = activeProfile ? activeProfile.referenceHtml : '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.'; chartReferenceEl.innerHTML = ref; chartHintEl.textContent = procedureEl.value === 'offshore' ? 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.' : 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual e peso máximo interpolado no gráfico principal.'; formHintEl.textContent = 'Todos os perfis do suplemento 6800 kg estão calibrados nesta build: Offshore, Clear Area / CAT B e Confined Area, nas configurações Standard, EAPS OFF, EAPS ON e IBF Installed.'; chartBaseImage.src = activeProfile ? activeProfile.pageSrc : 'docs/page-07.png'; chartBaseImage.alt = activeProfile ? activeProfile.previewTitle : 'Página completa do gráfico WAT'; updatePdfButtonLabel(); }
@@ -700,7 +712,7 @@ endobj
 startxref
 ${xrefStart}
 %%EOF`); return new Blob(pdfParts,{type:'application/pdf'}); }
-async function shareOrDownloadPdfFromCanvas(canvas, fileName) { const blob=buildPdfBlobFromCanvas(canvas); const file=new File([blob], fileName, {type:'application/pdf'}); if(navigator.canShare && navigator.share){ try { if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'WAT 6800 PDF', text:'PDF do cálculo documentado.'}); return; } } catch(err) { if(err?.name==='AbortError') return; } } const url=URL.createObjectURL(blob); const isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if(isiOS){ const opened=window.open(url,'_blank'); if(opened){ setTimeout(()=>URL.revokeObjectURL(url),60000); return; } } const a=document.createElement('a'); a.href=url; a.download=fileName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }
+async function shareOrDownloadPdfFromCanvas(canvas, fileName) { const blob=buildPdfBlobFromCanvas(canvas); const file=new File([blob], fileName, {type:'application/pdf'}); if(navigator.canShare && navigator.share){ try { if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'WAC 6800 PDF', text:'PDF do cálculo documentado.'}); return; } } catch(err) { if(err?.name==='AbortError') return; } } const url=URL.createObjectURL(blob); const isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if(isiOS){ const opened=window.open(url,'_blank'); if(opened){ setTimeout(()=>URL.revokeObjectURL(url),60000); return; } } const a=document.createElement('a'); a.href=url; a.download=fileName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }
 async function exportInterpolatedPdf() { if(!activeProfile || !currentResult || currentResult.error) { alert('Rode primeiro um cálculo válido em um perfil calibrado para gerar o PDF.'); return; } const canvas=renderCompositeCanvas(currentResult); if(!canvas){ alert('A página do RFM ainda não carregou. Abra a visualização do gráfico e tente novamente.'); return; } await shareOrDownloadPdfFromCanvas(canvas, activeProfile.exportFileName); }
 function updatePdfButtonLabel() { if(navigator.canShare && navigator.share){ try { const probe=new File([new Blob(['x'],{type:'application/pdf'})],'x.pdf',{type:'application/pdf'}); if(navigator.canShare({files:[probe]})){ exportPdfBtn.textContent='Compartilhar PDF'; return; } } catch(err) {} } exportPdfBtn.textContent='Baixar PDF'; }
 function runCalculation() { syncProfileUi(); const pa=Number(paEl.value), oat=Number(oatEl.value), actualWeight=Number(weightEl.value), headwind=Number(headwindEl.value||0); if([pa,oat,actualWeight].some(Number.isNaN)){ resetPendingState(); return; } if(!activeProfile || typeof activeProfile.calculate !== 'function' || activeProfile.calculate === notCalibratedProfile){ showUncalibratedProfileState(); return; } const result = activeProfile.calculate(pa,oat,actualWeight,headwind); if(result.error){ showRangeError(result); return; } showSuccess(result, activeProfile); }
@@ -805,7 +817,7 @@ function buildConfinedResult(profileId, noWind, actualWeightKg, paFt, oat, maxKg
     paFt,
     oat,
     headwindKt: 0,
-    referenceHtml: buildProfileReferenceHtml(profileId, figureLabel),
+    referenceHtml: `<strong>Gráfico em uso:</strong> ${figureLabel}<br><strong>Fonte:</strong> Leonardo AW139 RFM - cálculo Confined com seleção automática entre Supplement 12 (até 6400 kg) e Supplement 50 (6800 kg).`,
     resultDescription: `Resultado calculado com seleção automática da família Confined (${sourceLabel}).`
   };
 }
@@ -827,12 +839,12 @@ function calculateExactConfinedStandard(paFt,oat,actualWeightKg,headwindKt) {
       ...noWind,
       profileId: 'confined_standard',
       chartFamily: '6800',
-      referenceHtml: PROFILE_MAP.confined_standard.referenceHtml
+      referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.'
     };
   }
   return {
     ...buildConfinedResult('confined_standard', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-4', 'Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.'),
-    referenceHtml: PROFILE_MAP.confined_standard.referenceHtml,
+    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.',
     resultDescription: 'Resultado calculado somente com a carta Confined Standard do Supplement 50.'
   };
 }
@@ -843,12 +855,12 @@ function calculateExactConfinedEapsOff(paFt,oat,actualWeightKg,headwindKt) {
       ...noWind,
       profileId: 'confined_eaps_off',
       chartFamily: '6800',
-      referenceHtml: PROFILE_MAP.confined_eaps_off.referenceHtml
+      referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.'
     };
   }
   return {
     ...buildConfinedResult('confined_eaps_off', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-5', 'Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.'),
-    referenceHtml: PROFILE_MAP.confined_eaps_off.referenceHtml,
+    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.',
     resultDescription: 'Resultado calculado somente com a carta Confined EAPS OFF do Supplement 50.'
   };
 }
@@ -859,12 +871,12 @@ function calculateExactConfinedEapsOn(paFt,oat,actualWeightKg,headwindKt) {
       ...noWind,
       profileId: 'confined_eaps_on',
       chartFamily: '6800',
-      referenceHtml: PROFILE_MAP.confined_eaps_on.referenceHtml
+      referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.'
     };
   }
   return {
     ...buildConfinedResult('confined_eaps_on', noWind, actualWeightKg, paFt, oat, CONFINED_EAPS_ON_EXACT.main.kgMax, '6800', 'Supplement 50 / Figure 4-6', 'Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.'),
-    referenceHtml: PROFILE_MAP.confined_eaps_on.referenceHtml,
+    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.',
     resultDescription: 'Resultado calculado somente com a carta Confined EAPS ON do Supplement 50.'
   };
 }
@@ -875,12 +887,12 @@ function calculateExactIbfConfinedArea(paFt,oat,actualWeightKg,headwindKt) {
       ...noWind,
       profileId: 'confined_ibf',
       chartFamily: '6800',
-      referenceHtml: PROFILE_MAP.confined_ibf.referenceHtml
+      referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.'
     };
   }
   return {
     ...buildConfinedResult('confined_ibf', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-9B', 'Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.'),
-    referenceHtml: PROFILE_MAP.confined_ibf.referenceHtml,
+    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.',
     resultDescription: 'Resultado calculado somente com a carta Confined IBF do Supplement 50.'
   };
 }
