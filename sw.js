@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wat6800-allprofiles-v16-6-4-confined6400-visual-align';
+const CACHE_NAME = 'wat6800-allprofiles-v16-6-5-confined6400-visual-align2';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v16_6_4-confined6400-visual-align',
+  './app.js?v=allprofiles-v16_6_5-confined6400-visual-align2',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
