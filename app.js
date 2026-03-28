@@ -257,6 +257,11 @@ function buildReferenceHtml(profile) {
   return `<strong>Gráfico em uso:</strong> ${profile.figureLabel}<br><strong>Suplemento:</strong> ${meta.supplement || '—'}<br><strong>Página:</strong> ${meta.page || '—'}<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.`;
 }
 
+function getReferenceHtmlByProfileId(profileId) {
+  const profile = PROFILE_MAP[profileId];
+  return profile ? buildReferenceHtml(profile) : '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
+}
+
 Object.values(PROFILE_MAP).forEach((profile) => {
   profile.referenceHtml = buildReferenceHtml(profile);
 });
@@ -817,7 +822,7 @@ function buildConfinedResult(profileId, noWind, actualWeightKg, paFt, oat, maxKg
     paFt,
     oat,
     headwindKt: 0,
-    referenceHtml: `<strong>Gráfico em uso:</strong> ${figureLabel}<br><strong>Fonte:</strong> Leonardo AW139 RFM - cálculo Confined com seleção automática entre Supplement 12 (até 6400 kg) e Supplement 50 (6800 kg).`,
+    referenceHtml: getReferenceHtmlByProfileId(profileId),
     resultDescription: `Resultado calculado com seleção automática da família Confined (${sourceLabel}).`
   };
 }
@@ -839,12 +844,12 @@ function calculateExactConfinedStandard(paFt,oat,actualWeightKg,headwindKt) {
       ...noWind,
       profileId: 'confined_standard',
       chartFamily: '6800',
-      referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.'
+      referenceHtml: getReferenceHtmlByProfileId('confined_standard')
     };
   }
   return {
     ...buildConfinedResult('confined_standard', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-4', 'Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.'),
-    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-4 — Weight Limitations for CAT A Confined Area Procedure.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.',
+    referenceHtml: getReferenceHtmlByProfileId('confined_standard'),
     resultDescription: 'Resultado calculado somente com a carta Confined Standard do Supplement 50.'
   };
 }
@@ -855,12 +860,12 @@ function calculateExactConfinedEapsOff(paFt,oat,actualWeightKg,headwindKt) {
       ...noWind,
       profileId: 'confined_eaps_off',
       chartFamily: '6800',
-      referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.'
+      referenceHtml: getReferenceHtmlByProfileId('confined_eaps_off')
     };
   }
   return {
     ...buildConfinedResult('confined_eaps_off', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-5', 'Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.'),
-    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-5 — Weight Limitations for CAT A Confined Area Procedure, EAPS OFF.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.',
+    referenceHtml: getReferenceHtmlByProfileId('confined_eaps_off'),
     resultDescription: 'Resultado calculado somente com a carta Confined EAPS OFF do Supplement 50.'
   };
 }
@@ -871,12 +876,12 @@ function calculateExactConfinedEapsOn(paFt,oat,actualWeightKg,headwindKt) {
       ...noWind,
       profileId: 'confined_eaps_on',
       chartFamily: '6800',
-      referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.'
+      referenceHtml: getReferenceHtmlByProfileId('confined_eaps_on')
     };
   }
   return {
     ...buildConfinedResult('confined_eaps_on', noWind, actualWeightKg, paFt, oat, CONFINED_EAPS_ON_EXACT.main.kgMax, '6800', 'Supplement 50 / Figure 4-6', 'Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.'),
-    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-6 — Weight Limitations for CAT A Confined Area Procedure, EAPS ON.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.',
+    referenceHtml: getReferenceHtmlByProfileId('confined_eaps_on'),
     resultDescription: 'Resultado calculado somente com a carta Confined EAPS ON do Supplement 50.'
   };
 }
@@ -887,12 +892,12 @@ function calculateExactIbfConfinedArea(paFt,oat,actualWeightKg,headwindKt) {
       ...noWind,
       profileId: 'confined_ibf',
       chartFamily: '6800',
-      referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.'
+      referenceHtml: getReferenceHtmlByProfileId('confined_ibf')
     };
   }
   return {
     ...buildConfinedResult('confined_ibf', noWind, actualWeightKg, paFt, oat, 6900, '6800', 'Supplement 50 / Figure 4-9B', 'Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.'),
-    referenceHtml: '<strong>Gráfico em uso:</strong> Figure 4-9B — Weight Limitations for CAT A Confined Area Procedure, IBF Installed.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Supplement 50.',
+    referenceHtml: getReferenceHtmlByProfileId('confined_ibf'),
     resultDescription: 'Resultado calculado somente com a carta Confined IBF do Supplement 50.'
   };
 }
