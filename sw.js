@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wat6800-allprofiles-v16-6-6-minus-before-fields';
+const CACHE_NAME = 'wat6800-allprofiles-v16-7-0-sup90-cleararea-stageA';
 const APP_ASSETS = [
   './',
   './index.html',
@@ -43,6 +43,12 @@ const APP_ASSETS = [
   './docs/page-15.png',
   './docs/page-16.png',
   './docs/page-17.png',
+  './docs/wat7000.pdf',
+  './docs/page-18.png',
+  './docs/page-19.png',
+  './docs/page-20.png',
+  './docs/page-21.png',
+  './data/sup90-cleararea-stageA.json',
 ];
 
 self.addEventListener('install', (event) => {
