@@ -1346,3 +1346,213 @@ if (currentResult) {
   if (currentResult.referenceHtml) chartReferenceEl.innerHTML = currentResult.referenceHtml;
   drawOverlay(currentResult);
 }
+
+
+// --- v16.7.3 overrides: corrected Supplement 90 Clear Area extraction + engine ---
+const SUP90_CLEAR_STANDARD_EXACT_V173 = {
+  figure:'Figure 4-5', pageRef:'S90-28', pageImage:'docs/page-18.png', page:{width:1323,height:1872},
+  main:{xMin:389,xMax:870,kgMin:6800,kgMax:7100,yTopFt:677,yBottomFt:1330,yMinFt:-1000,yMaxFt:2500},
+  tempCurves:{
+    '0': [[708,677],[708,1330]],
+    '10': [[657,678],[708,764],[708,1330]],
+    '20': [[657,855],[708,942],[708,1330]],
+    '30': [[657,1026],[708,1118],[708,1330]]
+  },
+  limits:{
+    zeroAndBelowBoundary:[[708,677],[708,1330]],
+    oatLimit:[[634,1097],[708,1237]],
+    hdLimit:[[635,770],[635,1048]]
+  },
+  note:'v16.7.3 corrected: 10/20/30 curves descend vertically on the 7000 kg column; includes 0-and-below boundary, OAT LIMIT ISA+20, and Hd limit 2500 ft handling.'
+};
+const SUP90_CLEAR_EAPS_OFF_EXACT_V173 = {
+  figure:'Figure 4-6', pageRef:'S90-29', pageImage:'docs/page-19.png', page:{width:1323,height:1872},
+  main:{xMin:443,xMax:925,kgMin:6800,kgMax:7100,yTopFt:651,yBottomFt:1304,yMinFt:-1000,yMaxFt:2500},
+  tempCurves:{
+    '0': [[763,651],[763,1304]],
+    '10': [[712,654],[763,742],[763,1304]],
+    '20': [[712,828],[762,919],[762,1304]],
+    '30': [[712,1003],[762,1090],[762,1304]]
+  },
+  limits:{
+    zeroAndBelowBoundary:[[763,651],[763,1304]],
+    oatLimit:[[682,1056],[754,1193]],
+    hdLimit:[[683,770],[683,1040]]
+  },
+  note:'v16.7.3 corrected extraction with vertical continuation at 7000 kg and OAT LIMIT ISA+20 treated as limit, not 40°C curve.'
+};
+const SUP90_CLEAR_EAPS_ON_EXACT_V173 = {
+  figure:'Figure 4-7', pageRef:'S90-30', pageImage:'docs/page-20.png', page:{width:1323,height:1872},
+  main:{xMin:458,xMax:940,kgMin:6800,kgMax:7100,yTopFt:651,yBottomFt:1304,yMinFt:-1000,yMaxFt:2500},
+  tempCurves:{
+    '0': [[777,651],[777,1304]],
+    '10': [[726,652],[777,743],[777,1304]],
+    '20': [[726,827],[777,919],[777,1304]],
+    '30': [[726,1002],[777,1093],[777,1304]]
+  },
+  limits:{
+    zeroAndBelowBoundary:[[777,651],[777,1304]],
+    oatLimit:[[707,1047],[777,1188]],
+    hdLimit:[[708,770],[708,1040]]
+  },
+  note:'v16.7.3 corrected extraction; main frame realigned and vertical continuation at 7000 kg added.'
+};
+const SUP90_CLEAR_IBF_EXACT_V173 = {
+  figure:'Figure 4-8', pageRef:'S90-31', pageImage:'docs/page-21.png', page:{width:1323,height:1872},
+  main:{xMin:458,xMax:940,kgMin:6800,kgMax:7100,yTopFt:651,yBottomFt:1304,yMinFt:-1000,yMaxFt:2500},
+  tempCurves:{
+    '0': [[778,651],[778,1304]],
+    '10': [[726,652],[778,743],[778,1304]],
+    '20': [[726,827],[777,919],[777,1304]],
+    '30': [[726,1002],[778,1093],[778,1304]]
+  },
+  limits:{
+    zeroAndBelowBoundary:[[778,651],[778,1304]],
+    oatLimit:[[707,1082],[774,1220]],
+    hdLimit:[[709,770],[709,1040]]
+  },
+  note:'v16.7.3 corrected extraction with 0-and-below vertical, temperature curves extended at x=7000, and OAT LIMIT ISA+20 preserved separately.'
+};
+
+function isaTemperatureC(paFt){ return 15 - (2 * (paFt / 1000)); }
+function isaPlus20C(paFt){ return isaTemperatureC(paFt) + 20; }
+function densityAltitudeFt(paFt, oatC){ return paFt + 120 * (oatC - isaTemperatureC(paFt)); }
+function sup90Curve(data, label){ return toPoints(data.tempCurves[String(label)] || []); }
+function sup90LimitCurve(data){ return toPoints((data.limits && data.limits.oatLimit) || []); }
+function sup90HdLimitExceeded(paFt, oatC){ return densityAltitudeFt(paFt, oatC) > 2500 + 1; }
+function sup90ClearNoWindLimit(data, paFt, oat, label){
+  const pa = clamp(paFt, data.main.yMinFt, data.main.yMaxFt);
+  const paY = genericPdfChartPaToY(data, pa);
+  const isa20 = isaPlus20C(paFt);
+  if (sup90HdLimitExceeded(paFt, oat)) {
+    return { error: `Hd limit 2500 ft excedido no ${label}.`, hdLimitExceeded: true, paY, isa20, densityAltitudeFt: densityAltitudeFt(paFt, oat) };
+  }
+  if (oat > isa20 + 0.01) {
+    return { error: `OAT acima do limite ISA+20° no ${label}.`, oatLimitExceeded: true, paY, isa20, densityAltitudeFt: densityAltitudeFt(paFt, oat) };
+  }
+  let lowerTemp, upperTemp, lowerCurve, upperCurve, lowerX, upperX, t;
+  if (oat <= 0) {
+    lowerTemp = 0; upperTemp = 0;
+    lowerCurve = sup90Curve(data, 0); upperCurve = lowerCurve;
+    lowerX = upperX = xAtY(lowerCurve, paY);
+  } else if (oat <= 10) {
+    lowerTemp = 0; upperTemp = 10;
+    lowerCurve = sup90Curve(data, 0); upperCurve = sup90Curve(data, 10);
+    lowerX = xAtY(lowerCurve, paY); upperX = xAtY(upperCurve, paY);
+    t = (oat - 0) / 10;
+  } else if (oat <= 20) {
+    lowerTemp = 10; upperTemp = 20;
+    lowerCurve = sup90Curve(data, 10); upperCurve = sup90Curve(data, 20);
+    lowerX = xAtY(lowerCurve, paY); upperX = xAtY(upperCurve, paY);
+    t = (oat - 10) / 10;
+  } else if (oat <= 30) {
+    lowerTemp = 20; upperTemp = 30;
+    lowerCurve = sup90Curve(data, 20); upperCurve = sup90Curve(data, 30);
+    lowerX = xAtY(lowerCurve, paY); upperX = xAtY(upperCurve, paY);
+    t = (oat - 20) / 10;
+  } else {
+    lowerTemp = 30; upperTemp = isa20;
+    lowerCurve = sup90Curve(data, 30); upperCurve = sup90LimitCurve(data);
+    lowerX = xAtY(lowerCurve, paY); upperX = xAtY(upperCurve, paY);
+    if (isa20 <= 30.001) t = 1; else t = (oat - 30) / (isa20 - 30);
+  }
+  if ([lowerX, upperX].some(v => Number.isNaN(v))) {
+    return { error: `O ponto de altitude/OAT saiu da família explícita de curvas do ${label}.`, paY, isa20, densityAltitudeFt: densityAltitudeFt(paFt, oat) };
+  }
+  const interpolatedX = (lowerTemp === upperTemp || t === undefined) ? lowerX : lowerX + clamp(t, 0, 1) * (upperX - lowerX);
+  return {
+    paY,
+    isa20,
+    densityAltitudeFt: densityAltitudeFt(paFt, oat),
+    lowerTemp,
+    upperTemp,
+    lowerCurve,
+    upperCurve,
+    lowerX,
+    upperX,
+    noWindX: interpolatedX,
+    noWindKg: genericPdfChartXToKg(data, interpolatedX)
+  };
+}
+
+CLEAR_SUP90_VARIANTS.clear_standard.data = SUP90_CLEAR_STANDARD_EXACT_V173;
+CLEAR_SUP90_VARIANTS.clear_eaps_off.data = SUP90_CLEAR_EAPS_OFF_EXACT_V173;
+CLEAR_SUP90_VARIANTS.clear_eaps_on.data = SUP90_CLEAR_EAPS_ON_EXACT_V173;
+CLEAR_SUP90_VARIANTS.clear_ibf.data = SUP90_CLEAR_IBF_EXACT_V173;
+
+buildSup90ClearResult = function(profileId, noWind, actualWeightKg, paFt, oat, data, figureLabel, resultDescription) {
+  const maxWeight = roundToFive(Math.min(7000, noWind.noWindKg));
+  const margin = maxWeight - actualWeightKg;
+  return {
+    profileId,
+    exact: true,
+    chartFamily: '7000',
+    noWind,
+    maxWeight,
+    margin,
+    within: margin >= 0,
+    actualWeightKg,
+    paFt,
+    oat,
+    headwindKt: 0,
+    referenceHtml: buildClearSup90ReferenceHtml(profileId),
+    figureLabel,
+    resultDescription,
+    isa20: noWind.isa20,
+    hdValueFt: noWind.densityAltitudeFt
+  };
+};
+
+calculateExactClearStandard = function(paFt,oat,actualWeightKg) {
+  if (actualWeightKg >= 6800) {
+    const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_STANDARD_EXACT_V173, paFt, oat, 'Figure 4-5');
+    if (noWind.error) return { ...noWind, profileId: 'clear_standard', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_standard') };
+    return buildSup90ClearResult('clear_standard', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_STANDARD_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_standard.figureLabel, 'Resultado calculado com a carta Clear Area Standard do Supplement 90.');
+  }
+  return calculateExactClearStandard_6800(paFt,oat,actualWeightKg);
+};
+calculateExactClearEapsOff = function(paFt,oat,actualWeightKg) {
+  if (actualWeightKg >= 6800) {
+    const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_EAPS_OFF_EXACT_V173, paFt, oat, 'Figure 4-6');
+    if (noWind.error) return { ...noWind, profileId: 'clear_eaps_off', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_off') };
+    return buildSup90ClearResult('clear_eaps_off', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_OFF_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_eaps_off.figureLabel, 'Resultado calculado com a carta Clear Area EAPS OFF do Supplement 90.');
+  }
+  return calculateExactClearEapsOff_6800(paFt,oat,actualWeightKg);
+};
+calculateExactClearEapsOn = function(paFt,oat,actualWeightKg) {
+  if (actualWeightKg >= 6800) {
+    const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_EAPS_ON_EXACT_V173, paFt, oat, 'Figure 4-7');
+    if (noWind.error) return { ...noWind, profileId: 'clear_eaps_on', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_on') };
+    return buildSup90ClearResult('clear_eaps_on', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_ON_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_eaps_on.figureLabel, 'Resultado calculado com a carta Clear Area EAPS ON do Supplement 90.');
+  }
+  return calculateExactClearEapsOn_6800(paFt,oat,actualWeightKg);
+};
+calculateExactIbfClearArea = function(paFt,oat,actualWeightKg,headwindKt) {
+  if (actualWeightKg >= 6800) {
+    const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_IBF_EXACT_V173, paFt, oat, 'Figure 4-8');
+    if (noWind.error) return { ...noWind, profileId: 'clear_ibf', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_ibf') };
+    return buildSup90ClearResult('clear_ibf', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_IBF_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_ibf.figureLabel, 'Resultado calculado com a carta Clear Area IBF Installed do Supplement 90.');
+  }
+  return calculateExactIbfClearArea_6800(paFt,oat,actualWeightKg,headwindKt);
+};
+
+renderClearStandardAnnotatedCanvas = function(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.clear_standard, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_STANDARD_EXACT_V173);
+  return renderClearStandardAnnotatedCanvas_6800(result, options);
+};
+renderClearEapsOffAnnotatedCanvas = function(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.clear_eaps_off, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_EAPS_OFF_EXACT_V173);
+  return renderClearEapsOffAnnotatedCanvas_6800(result, options);
+};
+renderClearEapsOnAnnotatedCanvas = function(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.clear_eaps_on, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_EAPS_ON_EXACT_V173);
+  return renderClearEapsOnAnnotatedCanvas_6800(result, options);
+};
+renderClearIbfAnnotatedCanvas = function(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.clear_ibf, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_IBF_EXACT_V173);
+  return renderClearIbfAnnotatedCanvas_6800(result, options);
+};
