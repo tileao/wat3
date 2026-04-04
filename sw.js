@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wat6800-allprofiles-v16-7-1-sup90-cleararea-stageB';
+const CACHE_NAME = 'wat6800-allprofiles-v16-7-2-sup90-cleararea-stageC';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v16_6_6-minus-before-fields',
+  './app.js?v=allprofiles-v16_7_2-sup90-cleararea-stageC',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',

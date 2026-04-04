@@ -1175,3 +1175,174 @@ function buildConfinedReferenceHtml(profileId, chartFamily = '6800') {
   }
   return buildReferenceHtml(baseProfile);
 }
+
+
+// --- v16.7.2 overrides: activate Supplement 90 Clear Area (7000 kg) ---
+const SUP90_CLEAR_STANDARD_EXACT = {"figure":"Figure 4-5","pageRef":"S90-28","pageImage":"docs/page-18.png","page":{"width":1323,"height":1872},"main":{"xMin":389,"xMax":870,"kgMin":6800,"kgMax":7100,"yTopFt":677,"yBottomFt":1330,"yMinFt":-1000,"yMaxFt":2500},"tempCurves":{"10":[[657,678],[708,764]],"20":[[657,855],[708,942]],"30":[[657,1026],[708,1118]]},"limits":{"zeroAndBelowBoundary":[[708,764],[708,1320]],"hdLimit":[],"oatLimit":[]},"note":"Stage B exact extraction audit file from rendered PDF page. Curves hand-traced from PDF image; not yet wired into active engine."};
+const SUP90_CLEAR_EAPS_OFF_EXACT = {"figure":"Figure 4-6","pageRef":"S90-29","pageImage":"docs/page-19.png","page":{"width":1323,"height":1872},"main":{"xMin":443,"xMax":925,"kgMin":6800,"kgMax":7100,"yTopFt":651,"yBottomFt":1304,"yMinFt":-1000,"yMaxFt":2500},"tempCurves":{"10":[[712,654],[763,742]],"20":[[712,828],[762,919]],"30":[[712,1003],[762,1090]],"40":[[682,1056],[754,1193]]},"limits":{"zeroAndBelowBoundary":[[763,742],[763,1295]],"hdLimit":[],"oatLimit":[]},"note":"Stage B exact extraction audit file from rendered PDF page. Curves hand-traced from PDF image; not yet wired into active engine."};
+const SUP90_CLEAR_EAPS_ON_EXACT = {"figure":"Figure 4-7","pageRef":"S90-30","pageImage":"docs/page-20.png","page":{"width":1323,"height":1872},"main":{"xMin":374,"xMax":856,"kgMin":6800,"kgMax":7100,"yTopFt":651,"yBottomFt":1304,"yMinFt":-1000,"yMaxFt":2500},"tempCurves":{"10":[[726,652],[777,743]],"20":[[726,827],[777,919]],"30":[[642,1000],[697,1099]],"40":[[618,1047],[684,1188]]},"limits":{"zeroAndBelowBoundary":[[777,743],[777,1295]],"hdLimit":[],"oatLimit":[]},"note":"Stage B exact extraction audit file from rendered PDF page. Curves hand-traced from PDF image; not yet wired into active engine."};
+const SUP90_CLEAR_IBF_EXACT = {"figure":"Figure 4-8","pageRef":"S90-31","pageImage":"docs/page-21.png","page":{"width":1323,"height":1872},"main":{"xMin":458,"xMax":940,"kgMin":6800,"kgMax":7100,"yTopFt":651,"yBottomFt":1304,"yMinFt":-1000,"yMaxFt":2500},"tempCurves":{"10":[[726,652],[778,743]],"20":[[726,827],[777,919]],"30":[[726,1002],[778,1093]],"40":[[707,1082],[774,1220]]},"limits":{"zeroAndBelowBoundary":[[778,743],[778,1295]],"hdLimit":[],"oatLimit":[]},"note":"Stage B exact extraction audit file from rendered PDF page. Curves hand-traced from PDF image; not yet wired into active engine."};
+const clearStandard7000PageImage = new Image();
+clearStandard7000PageImage.src = 'docs/page-18.png';
+const clearEapsOff7000PageImage = new Image();
+clearEapsOff7000PageImage.src = 'docs/page-19.png';
+const clearEapsOn7000PageImage = new Image();
+clearEapsOn7000PageImage.src = 'docs/page-20.png';
+const clearIbf7000PageImage = new Image();
+clearIbf7000PageImage.src = 'docs/page-21.png';
+[clearStandard7000PageImage, clearEapsOff7000PageImage, clearEapsOn7000PageImage, clearIbf7000PageImage].forEach((img)=>img.addEventListener('load',()=>{ if(activeProfile?.pageImage===img && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); }));
+
+const CLEAR_SUP90_VARIANTS = {
+  clear_standard: {
+    pageSrc: 'docs/page-18.png', pageImage: clearStandard7000PageImage, data: SUP90_CLEAR_STANDARD_EXACT,
+    figureLabel: 'Figure 4-5 — Weight Limitations for CAT A Clear Area Procedure.',
+    previewTitle: 'Clear Area Standard - página completa do RFM (Supp 90)',
+    supplement: 'Supplement 90', page: 'S90-28'
+  },
+  clear_eaps_off: {
+    pageSrc: 'docs/page-19.png', pageImage: clearEapsOff7000PageImage, data: SUP90_CLEAR_EAPS_OFF_EXACT,
+    figureLabel: 'Figure 4-6 — Weight Limitations for CAT A Clear Area Procedure, EAPS OFF.',
+    previewTitle: 'Clear Area EAPS OFF - página completa do RFM (Supp 90)',
+    supplement: 'Supplement 90', page: 'S90-29'
+  },
+  clear_eaps_on: {
+    pageSrc: 'docs/page-20.png', pageImage: clearEapsOn7000PageImage, data: SUP90_CLEAR_EAPS_ON_EXACT,
+    figureLabel: 'Figure 4-7 — Weight Limitations for CAT A Clear Area Procedure, EAPS ON.',
+    previewTitle: 'Clear Area EAPS ON - página completa do RFM (Supp 90)',
+    supplement: 'Supplement 90', page: 'S90-30'
+  },
+  clear_ibf: {
+    pageSrc: 'docs/page-21.png', pageImage: clearIbf7000PageImage, data: SUP90_CLEAR_IBF_EXACT,
+    figureLabel: 'Figure 4-8 — Weight Limitations for CAT A Clear Area Procedure, IBF Installed.',
+    previewTitle: 'IBF Installed - CAT A Clear Area - página completa do RFM (Supp 90)',
+    supplement: 'Supplement 90', page: 'S90-31'
+  }
+};
+
+function buildClearSup90ReferenceHtml(profileId) {
+  const variant = CLEAR_SUP90_VARIANTS[profileId];
+  if (!variant) return '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
+  return buildReferenceHtmlFromMeta(variant.figureLabel, { supplement: variant.supplement, page: variant.page });
+}
+
+const previousGetRenderableProfile_v1672 = getRenderableProfile;
+getRenderableProfile = function(profile, result=currentResult) {
+  if (result?.chartFamily === '7000' && CLEAR_SUP90_VARIANTS[profile?.id]) {
+    const variant = CLEAR_SUP90_VARIANTS[profile.id];
+    return {
+      ...profile,
+      pageSrc: variant.pageSrc,
+      pageImage: variant.pageImage,
+      figureLabel: variant.figureLabel,
+      previewTitle: variant.previewTitle,
+      referenceHtml: buildClearSup90ReferenceHtml(profile.id)
+    };
+  }
+  return previousGetRenderableProfile_v1672(profile, result);
+};
+
+const calculateExactClearStandard_6800 = calculateExactClearStandard;
+const calculateExactClearEapsOff_6800 = calculateExactClearEapsOff;
+const calculateExactClearEapsOn_6800 = calculateExactClearEapsOn;
+const calculateExactIbfClearArea_6800 = calculateExactIbfClearArea;
+
+function buildSup90ClearResult(profileId, noWind, actualWeightKg, paFt, oat, data, figureLabel, resultDescription) {
+  const maxWeight = roundToFive(Math.min(7000, noWind.noWindKg));
+  const margin = maxWeight - actualWeightKg;
+  return {
+    profileId,
+    exact: true,
+    chartFamily: '7000',
+    noWind,
+    maxWeight,
+    margin,
+    within: margin >= 0,
+    actualWeightKg,
+    paFt,
+    oat,
+    headwindKt: 0,
+    referenceHtml: buildClearSup90ReferenceHtml(profileId),
+    figureLabel,
+    resultDescription
+  };
+}
+
+calculateExactClearStandard = function(paFt,oat,actualWeightKg) {
+  if (actualWeightKg >= 6800) {
+    const noWind = genericPdfChartNoWindLimit(SUP90_CLEAR_STANDARD_EXACT, paFt, oat, 'Figure 4-5');
+    if (noWind.error) return { ...noWind, profileId: 'clear_standard', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_standard') };
+    return buildSup90ClearResult('clear_standard', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_STANDARD_EXACT, CLEAR_SUP90_VARIANTS.clear_standard.figureLabel, 'Resultado calculado com a carta Clear Area Standard do Supplement 90.');
+  }
+  return calculateExactClearStandard_6800(paFt,oat,actualWeightKg);
+};
+calculateExactClearEapsOff = function(paFt,oat,actualWeightKg) {
+  if (actualWeightKg >= 6800) {
+    const noWind = genericPdfChartNoWindLimit(SUP90_CLEAR_EAPS_OFF_EXACT, paFt, oat, 'Figure 4-6');
+    if (noWind.error) return { ...noWind, profileId: 'clear_eaps_off', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_off') };
+    return buildSup90ClearResult('clear_eaps_off', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_OFF_EXACT, CLEAR_SUP90_VARIANTS.clear_eaps_off.figureLabel, 'Resultado calculado com a carta Clear Area EAPS OFF do Supplement 90.');
+  }
+  return calculateExactClearEapsOff_6800(paFt,oat,actualWeightKg);
+};
+calculateExactClearEapsOn = function(paFt,oat,actualWeightKg) {
+  if (actualWeightKg >= 6800) {
+    const noWind = genericPdfChartNoWindLimit(SUP90_CLEAR_EAPS_ON_EXACT, paFt, oat, 'Figure 4-7');
+    if (noWind.error) return { ...noWind, profileId: 'clear_eaps_on', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_on') };
+    return buildSup90ClearResult('clear_eaps_on', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_ON_EXACT, CLEAR_SUP90_VARIANTS.clear_eaps_on.figureLabel, 'Resultado calculado com a carta Clear Area EAPS ON do Supplement 90.');
+  }
+  return calculateExactClearEapsOn_6800(paFt,oat,actualWeightKg);
+};
+calculateExactIbfClearArea = function(paFt,oat,actualWeightKg,headwindKt) {
+  if (actualWeightKg >= 6800) {
+    const noWind = genericPdfChartNoWindLimit(SUP90_CLEAR_IBF_EXACT, paFt, oat, 'Figure 4-8');
+    if (noWind.error) return { ...noWind, profileId: 'clear_ibf', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_ibf') };
+    return buildSup90ClearResult('clear_ibf', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_IBF_EXACT, CLEAR_SUP90_VARIANTS.clear_ibf.figureLabel, 'Resultado calculado com a carta Clear Area IBF Installed do Supplement 90.');
+  }
+  return calculateExactIbfClearArea_6800(paFt,oat,actualWeightKg,headwindKt);
+};
+
+const renderClearStandardAnnotatedCanvas_6800 = renderClearStandardAnnotatedCanvas;
+const renderClearEapsOffAnnotatedCanvas_6800 = renderClearEapsOffAnnotatedCanvas;
+const renderClearEapsOnAnnotatedCanvas_6800 = renderClearEapsOnAnnotatedCanvas;
+const renderClearIbfAnnotatedCanvas_6800 = renderClearIbfAnnotatedCanvas;
+
+renderClearStandardAnnotatedCanvas = function(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.clear_standard, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_STANDARD_EXACT);
+  return renderClearStandardAnnotatedCanvas_6800(result, options);
+};
+renderClearEapsOffAnnotatedCanvas = function(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.clear_eaps_off, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_EAPS_OFF_EXACT);
+  return renderClearEapsOffAnnotatedCanvas_6800(result, options);
+};
+renderClearEapsOnAnnotatedCanvas = function(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.clear_eaps_on, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_EAPS_ON_EXACT);
+  return renderClearEapsOnAnnotatedCanvas_6800(result, options);
+};
+renderClearIbfAnnotatedCanvas = function(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.clear_ibf, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_IBF_EXACT);
+  return renderClearIbfAnnotatedCanvas_6800(result, options);
+};
+
+PROFILE_MAP.clear_standard.calculate = calculateExactClearStandard;
+PROFILE_MAP.clear_eaps_off.calculate = calculateExactClearEapsOff;
+PROFILE_MAP.clear_eaps_on.calculate = calculateExactClearEapsOn;
+PROFILE_MAP.clear_ibf.calculate = calculateExactIbfClearArea;
+PROFILE_MAP.clear_standard.render = renderClearStandardAnnotatedCanvas;
+PROFILE_MAP.clear_eaps_off.render = renderClearEapsOffAnnotatedCanvas;
+PROFILE_MAP.clear_eaps_on.render = renderClearEapsOnAnnotatedCanvas;
+PROFILE_MAP.clear_ibf.render = renderClearIbfAnnotatedCanvas;
+
+const syncProfileUi_v1672 = syncProfileUi;
+syncProfileUi = function() {
+  syncProfileUi_v1672();
+  formHintEl.textContent = 'WAT: até 6800 kg usam as cartas originais de 6800; Clear Area acima de 6800 kg usa o Supplement 90 (7000 kg).';
+};
+
+syncProfileUi();
+if (currentResult) {
+  if (currentResult.referenceHtml) chartReferenceEl.innerHTML = currentResult.referenceHtml;
+  drawOverlay(currentResult);
+}
