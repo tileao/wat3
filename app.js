@@ -1383,19 +1383,19 @@ const SUP90_CLEAR_EAPS_OFF_EXACT_V173 = {
 };
 const SUP90_CLEAR_EAPS_ON_EXACT_V173 = {
   figure:'Figure 4-7', pageRef:'S90-30', pageImage:'docs/page-20.png', page:{width:1323,height:1872},
-  main:{xMin:458,xMax:940,kgMin:6800,kgMax:7100,yTopFt:651,yBottomFt:1304,yMinFt:-1000,yMaxFt:2500},
+  main:{xMin:374,xMax:856,kgMin:6800,kgMax:7100,yTopFt:651,yBottomFt:1304,yMinFt:-1000,yMaxFt:2500},
   tempCurves:{
-    '0': [[777,651],[777,1304]],
-    '10': [[726,652],[777,743],[777,1304]],
-    '20': [[726,827],[777,919],[777,1304]],
-    '30': [[726,1002],[777,1093],[777,1304]]
+    '0': [[695,651],[695,1304]],
+    '10': [[642,651],[695,743],[695,1304]],
+    '20': [[642,827],[695,919],[695,1304]],
+    '30': [[642,1000],[695,1093],[695,1304]]
   },
   limits:{
-    zeroAndBelowBoundary:[[777,651],[777,1304]],
-    oatLimit:[[707,1047],[777,1188]],
-    hdLimit:[[708,770],[708,1040]]
+    zeroAndBelowBoundary:[[695,651],[695,1304]],
+    oatLimit:[[642,1077],[692,1185],[695,1304]],
+    hdLimit:[[640,651],[640,1077]]
   },
-  note:'v16.7.3 corrected extraction; main frame realigned and vertical continuation at 7000 kg added.'
+  note:'v16.7.5 render alignment hotfix for Figure 4-7: page coordinates re-anchored to the official PDF page, preserving the same calculation scale while correcting the EAPS ON overlay placement.'
 };
 const SUP90_CLEAR_IBF_EXACT_V173 = {
   figure:'Figure 4-8', pageRef:'S90-31', pageImage:'docs/page-21.png', page:{width:1323,height:1872},

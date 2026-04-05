@@ -17,24 +17,42 @@
     "yMaxFt": 2500
   },
   "tempCurves": {
-    "10": [
+    "0": [
       [
-        726,
-        652
+        695,
+        651
       ],
       [
-        777,
+        695,
+        1304
+      ]
+    ],
+    "10": [
+      [
+        642,
+        651
+      ],
+      [
+        695,
         743
+      ],
+      [
+        695,
+        1304
       ]
     ],
     "20": [
       [
-        726,
+        642,
         827
       ],
       [
-        777,
+        695,
         919
+      ],
+      [
+        695,
+        1304
       ]
     ],
     "30": [
@@ -43,34 +61,50 @@
         1000
       ],
       [
-        697,
-        1099
-      ]
-    ],
-    "40": [
-      [
-        618,
-        1047
+        695,
+        1093
       ],
       [
-        684,
-        1188
+        695,
+        1304
       ]
     ]
   },
   "limits": {
     "zeroAndBelowBoundary": [
       [
-        777,
-        743
+        695,
+        651
       ],
       [
-        777,
-        1295
+        695,
+        1304
       ]
     ],
-    "hdLimit": [],
-    "oatLimit": []
+    "oatLimit": [
+      [
+        642,
+        1077
+      ],
+      [
+        692,
+        1185
+      ],
+      [
+        695,
+        1304
+      ]
+    ],
+    "hdLimit": [
+      [
+        640,
+        651
+      ],
+      [
+        640,
+        1077
+      ]
+    ]
   },
-  "note": "Stage B exact extraction audit file from rendered PDF page. Curves hand-traced from PDF image; not yet wired into active engine."
+  "note": "v16.7.5 render alignment hotfix for Figure 4-7: coordinates re-anchored to the official PDF page."
 }
