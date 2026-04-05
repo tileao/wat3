@@ -372,7 +372,7 @@ function syncProcedureOptionsForAircraft() {
   const is7000 = getSelectedAircraftSet() === '7000';
   Array.from(procedureEl.options).forEach((option) => {
     option.disabled = false;
-    if (option.value === 'offshore') option.textContent = is7000 ? 'Offshore Helideck / Offshore Enhanced' : 'Offshore Helideck';
+    if (option.value === 'offshore') option.textContent = 'CAT A Offshore Helideck';
     if (option.value === 'confined') option.textContent = 'Confined Area';
   });
 }
@@ -1914,7 +1914,7 @@ PROFILE_MAP.clear_ibf.render = renderClearIbfAnnotatedCanvas;
 function applyOperationalUiLabels_v1683() {
   const is7000 = getSelectedAircraftSet() === '7000';
   Array.from(procedureEl.options).forEach((option) => {
-    if (option.value === 'offshore') option.textContent = is7000 ? 'CAT A Offshore Enhanced' : 'CAT A Offshore Helideck';
+    if (option.value === 'offshore') option.textContent = 'CAT A Offshore Helideck';
     if (option.value === 'clear') option.textContent = 'CAT A Clear Area';
     if (option.value === 'catb') option.textContent = 'CAT B';
     if (option.value === 'confined') option.textContent = 'CAT A Confined Area';

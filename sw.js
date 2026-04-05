@@ -1,10 +1,10 @@
-const CACHE_NAME = 'aw139-wat-companion-v16-9-6-enhanced-dedupe-fix';
+const CACHE_NAME = 'aw139-wat-companion-v16-9-7-offshore-label-fix';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=v16_9_6-enhanced-dedupe-fix',
+  './app.js?v=v16_9_7-offshore-label-fix',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
