@@ -112,3 +112,45 @@ select {
 .sign-toggle{width:42px;min-width:42px;max-width:42px;min-height:52px;padding:0;border-radius:12px;flex:0 0 42px;font-size:16px;font-weight:700;line-height:1;background:#111a26;}
 .sign-toggle:active{transform:translateY(1px);}
 @media (max-width: 480px){.sign-toggle{width:38px;min-width:38px;max-width:38px;flex-basis:38px;}}
+
+
+.segmented{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap:10px;
+}
+.segment-option{
+  position:relative;
+  display:block;
+}
+.segment-option input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+.segment-option span{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:56px;
+  padding:0 14px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:#0f1722;
+  color:var(--text);
+  font-weight:700;
+  transition:all .18s ease;
+  margin-bottom:0;
+}
+.segment-option input:checked + span{
+  background:linear-gradient(180deg, #1f7af0 0%, #1a66ca 100%);
+  border-color:#2e73d3;
+  box-shadow:0 0 0 1px rgba(82,168,255,.18) inset;
+}
+.segment-option input:focus-visible + span{
+  outline:2px solid rgba(82,168,255,.8);
+  outline-offset:2px;
+}
+.segment-option input:disabled + span{
+  opacity:.45;
+}

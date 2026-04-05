@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0f14">
-  <title>WAT 6800</title>
+  <title>AW139 WAT Companion</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -13,9 +13,9 @@
     <header class="hero">
       <div>
         <p class="eyebrow">AW139</p>
-        <h1>WAT 6800</h1>
-        <p class="subtitle">Envelope check com base nos WAT Charts</p>
-        <p class="build-version">Build v16.7.3</p>
+        <h1>AW139 WAT Companion</h1>
+        <p class="subtitle">Envelope check estrutural para famílias 6800 e 7000</p>
+        <p class="build-version">Build v16.8.1</p>
       </div>
       <button id="installBtn" class="ghost hidden">Instalar</button>
     </header>
@@ -23,16 +23,31 @@
     <section class="card form-card">
       <div class="card-title-row">
         <h2>Entradas</h2>
-        <span class="pill">Offline PWA</span>
+        <span class="pill">Offline PWA • 6800 / 7000</span>
       </div>
 
       <div class="grid compact-grid">
+        <label class="control-block">
+          <span>Aircraft WAT set</span>
+          <div class="segmented">
+            <label class="segment-option">
+              <input type="radio" name="aircraftSet" value="6800" checked>
+              <span>6800 kg</span>
+            </label>
+            <label class="segment-option">
+              <input type="radio" name="aircraftSet" value="7000">
+              <span>7000 kg / Sup 90</span>
+            </label>
+          </div>
+        </label>
+
         <label class="control-block select-block">
           <span>Procedure</span>
           <div class="select-wrap">
             <select id="procedure" aria-label="Procedure">
               <option value="offshore" selected>Offshore Helideck</option>
-              <option value="clear">Clear Area / CAT B</option>
+              <option value="clear">CAT A Clear Area</option>
+              <option value="catb">CAT B</option>
               <option value="confined">Confined Area</option>
             </select>
           </div>
@@ -81,7 +96,7 @@
         <button id="runBtn" class="primary">Check Envelope</button>
         <button id="demoBtn" class="ghost">Carregar demo</button>
       </div>
-      <p id="formHint" class="hint">Offshore Helideck + Standard, EAPS OFF e EAPS ON estão calibrados. Os demais perfis permanecem bloqueados.</p>
+      <p id="formHint" class="hint">Selecione a família WAT 6800 ou 7000. No 7000, Clear Area e CAT B usam Supp 90; Offshore e Confined ficam liberados para a faixa calibrada atual.</p>
     </section>
 
     <section id="statusCard" class="card status neutral">
@@ -130,7 +145,7 @@
     </section>
 
     <section class="card compact">
-      <h2>Arquitetura pronta para os charts</h2>
+      <h2>Arquitetura do motor WAT</h2>
       <ul class="clean-list">
         <li>Banco de dados em JSON por procedimento/configuração</li>
         <li>Motor de interpolação separado da interface</li>
@@ -140,6 +155,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=allprofiles-v16_7_3-sup90-cleararea-fix1" defer></script>
+  <script src="app.js?v=v16_8_1-aircraft-7000-offshore-confined-unlock" defer></script>
 </body>
 </html>

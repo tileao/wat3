@@ -1,5 +1,6 @@
 let deferredPrompt = null;
 const installBtn = document.getElementById('installBtn');
+const aircraftSetEls = Array.from(document.querySelectorAll('input[name="aircraftSet"]'));
 const procedureEl = document.getElementById('procedure');
 const configurationEl = document.getElementById('configuration');
 const paEl = document.getElementById('pressureAltitude');
@@ -255,6 +256,69 @@ const PROFILE_META = {
   confined_ibf: { supplement: 'Supplement 50', page: 'S50-32B' }
 };
 
+
+PROFILE_MAP.catb_standard = {
+  id: 'catb_standard',
+  pageSrc: PROFILE_MAP.clear_standard.pageSrc,
+  pageImage: PROFILE_MAP.clear_standard.pageImage,
+  exportFileName: 'wat6800-catb-standard.pdf',
+  previewTitle: 'CAT B Standard - página completa do RFM',
+  procedureLabel: 'CAT B',
+  configLabel: 'Standard',
+  figureLabel: 'Figure 4-1 — Weight Limitations for CAT A Clear Area and CAT B Procedure.',
+  calculate: null,
+  render: null,
+  statusBadge: 'EXATO PDF CAT B STD',
+  resultDescription: 'Resultado calculado com base nas curvas vetoriais do Figure 4-1 (CAT B).'
+};
+PROFILE_MAP.catb_eaps_off = {
+  id: 'catb_eaps_off',
+  pageSrc: PROFILE_MAP.clear_eaps_off.pageSrc,
+  pageImage: PROFILE_MAP.clear_eaps_off.pageImage,
+  exportFileName: 'wat6800-catb-eaps-off.pdf',
+  previewTitle: 'CAT B EAPS OFF - página completa do RFM',
+  procedureLabel: 'CAT B',
+  configLabel: 'EAPS OFF',
+  figureLabel: 'Figure 4-2 — Weight Limitations for CAT A Clear Area and CAT B Procedure, EAPS OFF.',
+  calculate: null,
+  render: null,
+  statusBadge: 'EXATO PDF CAT B EAPS OFF',
+  resultDescription: 'Resultado calculado com base nas curvas vetoriais do Figure 4-2 (CAT B, EAPS OFF).'
+};
+PROFILE_MAP.catb_eaps_on = {
+  id: 'catb_eaps_on',
+  pageSrc: PROFILE_MAP.clear_eaps_on.pageSrc,
+  pageImage: PROFILE_MAP.clear_eaps_on.pageImage,
+  exportFileName: 'wat6800-catb-eaps-on.pdf',
+  previewTitle: 'CAT B EAPS ON - página completa do RFM',
+  procedureLabel: 'CAT B',
+  configLabel: 'EAPS ON',
+  figureLabel: 'Figure 4-3 — Weight Limitations for CAT A Clear Area and CAT B Procedure, EAPS ON.',
+  calculate: null,
+  render: null,
+  statusBadge: 'EXATO PDF CAT B EAPS ON',
+  resultDescription: 'Resultado calculado com base nas curvas vetoriais do Figure 4-3 (CAT B, EAPS ON).'
+};
+PROFILE_MAP.catb_ibf = {
+  id: 'catb_ibf',
+  pageSrc: PROFILE_MAP.clear_ibf.pageSrc,
+  pageImage: PROFILE_MAP.clear_ibf.pageImage,
+  exportFileName: 'wat6800-catb-ibf-installed.pdf',
+  previewTitle: 'CAT B IBF Installed - página completa do RFM',
+  procedureLabel: 'CAT B',
+  configLabel: 'IBF Installed',
+  figureLabel: 'Figure 4-9A — Weight Limitations for CAT A Clear Area and CAT B Procedure, IBF Installed.',
+  calculate: null,
+  render: null,
+  statusBadge: 'EXATO PDF CAT B IBF',
+  resultDescription: 'Resultado calculado com base nas curvas vetoriais do Figure 4-9A (CAT B, IBF Installed).'
+};
+
+PROFILE_META.catb_standard = { supplement: 'Supplement 50', page: 'S50-24B' };
+PROFILE_META.catb_eaps_off = { supplement: 'Supplement 50', page: 'S50-25' };
+PROFILE_META.catb_eaps_on = { supplement: 'Supplement 50', page: 'S50-26' };
+PROFILE_META.catb_ibf = { supplement: 'Supplement 50', page: 'S50-32A' };
+
 function buildReferenceHtml(profile) {
   const meta = PROFILE_META[profile.id] || {};
   return `<strong>Gráfico em uso:</strong> ${profile.figureLabel}<br><strong>Suplemento:</strong> ${meta.supplement || '—'}<br><strong>Página:</strong> ${meta.page || '—'}<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.`;
@@ -271,6 +335,27 @@ Object.values(PROFILE_MAP).forEach((profile) => {
 
 let currentResult = null;
 let activeProfile = null;
+
+function getSelectedAircraftSet() {
+  return aircraftSetEls.find((el) => el.checked)?.value || '6800';
+}
+function getAircraftMaxWeight() {
+  return getSelectedAircraftSet() === '7000' ? 7000 : 6800;
+}
+function shouldUseSup90Aircraft(actualWeightKg) {
+  return getSelectedAircraftSet() === '7000' && Number(actualWeightKg) >= 6800;
+}
+function isProcedureAvailableForAircraft(procedure) {
+  return true;
+}
+function syncProcedureOptionsForAircraft() {
+  const is7000 = getSelectedAircraftSet() === '7000';
+  Array.from(procedureEl.options).forEach((option) => {
+    option.disabled = false;
+    if (option.value === 'offshore') option.textContent = is7000 ? 'Offshore Helideck / Offshore Enhanced' : 'Offshore Helideck';
+    if (option.value === 'confined') option.textContent = 'Confined Area';
+  });
+}
 
 const autoAdvanceRules = [
   { el: paEl, next: oatEl, minDigits: 3 },
@@ -311,10 +396,43 @@ function setupAutoAdvance() { autoAdvanceRules.forEach((rule) => { rule.el.addEv
 paNegativeBtn?.addEventListener('click', () => { toggleSignedInput(paEl, 5); });
 oatNegativeBtn?.addEventListener('click', () => { toggleSignedInput(oatEl, 2); });
 
-function toggleHeadwind() { const offshore = procedureEl.value === 'offshore'; headwindWrap.classList.toggle('hidden', !offshore); headwindEl.disabled = !offshore; if (!offshore) headwindEl.value = ''; }
-function getActiveProfile() { const key = `${procedureEl.value}_${configurationEl.value}`; return PROFILE_MAP[key] || null; }
-function syncProfileUi() { activeProfile = getActiveProfile(); const ref = activeProfile ? activeProfile.referenceHtml : '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.'; chartReferenceEl.innerHTML = ref; chartHintEl.textContent = procedureEl.value === 'offshore' ? 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.' : 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual e peso máximo interpolado no gráfico principal.'; formHintEl.textContent = 'Todos os perfis do suplemento 6800 kg estão calibrados nesta build: Offshore, Clear Area / CAT B e Confined Area, nas configurações Standard, EAPS OFF, EAPS ON e IBF Installed.'; chartBaseImage.src = activeProfile ? activeProfile.pageSrc : 'docs/page-07.png'; chartBaseImage.alt = activeProfile ? activeProfile.previewTitle : 'Página completa do gráfico WAT'; updatePdfButtonLabel(); }
-function loadDemo() { procedureEl.value = 'offshore'; configurationEl.value = 'standard'; paEl.value = '100'; oatEl.value = '30'; weightEl.value = '6600'; headwindEl.value = '0'; toggleHeadwind(); syncProfileUi(); runCalculation(); }
+function toggleHeadwind() {
+  const offshore = procedureEl.value === 'offshore' && getSelectedAircraftSet() === '6800';
+  headwindWrap.classList.toggle('hidden', !offshore);
+  headwindEl.disabled = !offshore;
+  if (!offshore) headwindEl.value = '';
+}
+function getActiveProfile() {
+  const key = `${procedureEl.value}_${configurationEl.value}`;
+  return PROFILE_MAP[key] || null;
+}
+function syncProfileUi() {
+  syncProcedureOptionsForAircraft();
+  activeProfile = getActiveProfile();
+  const ref = activeProfile ? activeProfile.referenceHtml : '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
+  chartReferenceEl.innerHTML = ref;
+  chartHintEl.textContent = procedureEl.value === 'offshore'
+    ? 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.'
+    : 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual e peso máximo interpolado no gráfico principal.';
+  formHintEl.textContent = getSelectedAircraftSet() === '7000'
+    ? 'Família 7000 ativa: CAT A Clear Area e CAT B usam cartas separadas do Supplement 90 quando o peso entra na faixa acima de 6800 kg.'
+    : 'Família 6800 ativa: Offshore, CAT A Clear Area, CAT B e Confined Area usam as cartas base do Supplement 50.';
+  chartBaseImage.src = activeProfile ? activeProfile.pageSrc : 'docs/page-07.png';
+  chartBaseImage.alt = activeProfile ? activeProfile.previewTitle : 'Página completa do gráfico WAT';
+  updatePdfButtonLabel();
+  toggleHeadwind();
+}
+function loadDemo() {
+  aircraftSetEls.forEach((el) => { el.checked = el.value === '7000'; });
+  procedureEl.value = 'clear';
+  configurationEl.value = 'eaps_on';
+  paEl.value = '0';
+  oatEl.value = '30';
+  weightEl.value = '6900';
+  headwindEl.value = '0';
+  syncProfileUi();
+  runCalculation();
+}
 function genericPdfChartXToKg(data, x) { const m = data.main; return m.kgMin + ((x - m.xMin) / (m.xMax - m.xMin)) * (m.kgMax - m.kgMin); }
 function genericPdfChartKgToX(data, kg) { const m = data.main; return m.xMin + ((kg - m.kgMin) / (m.kgMax - m.kgMin)) * (m.xMax - m.xMin); }
 function genericPdfChartPaToY(data, paFt) { const m = data.main; const pa = clamp(paFt, m.yMinFt, m.yMaxFt); return m.yTopFt + ((m.yMaxFt - pa) / (m.yMaxFt - m.yMinFt)) * (m.yBottomFt - m.yTopFt); }
@@ -680,10 +798,10 @@ function renderClearEapsOffAnnotatedCanvas(result=currentResult, options={}) { r
 function renderClearEapsOnAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPdfPage(result, options, clearEapsOnPageImage, PROFILE_MAP.clear_eaps_on, CLEAR_EAPS_ON_EXACT); }
 function renderConfinedEapsOnAnnotatedCanvas(result=currentResult, options={}) { return renderGenericNoHeadwindPlacedPage(result, options, confinedEapsOnPageImage, PROFILE_MAP.confined_eaps_on, CONFINED_EAPS_ON_EXACT, EAPS_PAGE_PLACEMENT); }
 function getRenderableProfile(profile) { return profile && typeof profile.render === 'function' ? profile : null; }
-function resetPendingState() { statusCard.className='card status neutral'; statusBadge.textContent='AGUARDANDO DADOS'; statusTitle.textContent='Envelope check'; statusText.textContent='Selecione procedure, configuration e preencha altitude, OAT e peso atual.'; maxWeightEl.textContent='—'; marginEl.textContent='—'; currentResult=null; drawOverlay(); }
+function resetPendingState() { statusCard.className='card status neutral'; statusBadge.textContent='AGUARDANDO DADOS'; statusTitle.textContent='Envelope check'; statusText.textContent='Selecione a família da aeronave, o procedimento, a configuração e preencha altitude, OAT e peso atual.'; maxWeightEl.textContent='—'; marginEl.textContent='—'; currentResult=null; drawOverlay(); }
 function showUncalibratedProfileState() { statusCard.className='card status neutral'; statusBadge.textContent='PERFIL NÃO CALIBRADO'; statusTitle.textContent='Modo ainda não calibrado'; statusText.textContent='O perfil selecionado ainda não possui motor de cálculo calibrado nesta build.'; maxWeightEl.textContent='—'; marginEl.textContent='—'; currentResult=null; drawOverlay(); }
 function showRangeError(result) { statusCard.className='card status neutral'; statusBadge.textContent='PONTO FORA DA FAIXA'; statusTitle.textContent='Validação manual necessária'; statusText.textContent=result.error; maxWeightEl.textContent='—'; marginEl.textContent='—'; currentResult=result; drawOverlay(result); }
-function showSuccess(result, profile) { statusCard.className=`card status ${result.within ? 'within':'out'}`; statusBadge.textContent = profile.statusBadge || 'PERFIL CALIBRADO'; statusTitle.textContent = result.within ? 'WITHIN ENVELOPE' : 'OUT OF ENVELOPE'; statusText.textContent = profile.resultDescription || 'Resultado calculado com base nas curvas vetoriais do PDF.'; maxWeightEl.textContent=formatKg(result.maxWeight); marginEl.textContent=`${result.margin>=0?'+':''}${Math.round(result.margin).toLocaleString('pt-BR')} kg`; currentResult=result; drawOverlay(result); }
+function showSuccess(result, profile) { statusCard.className=`card status ${result.within ? 'within':'out'}`; statusBadge.textContent = profile.statusBadge || 'PERFIL CALIBRADO'; statusTitle.textContent = result.within ? 'WITHIN ENVELOPE' : 'OUT OF ENVELOPE'; statusText.textContent = result.resultDescription || profile.resultDescription || 'Resultado calculado com base nas curvas vetoriais do PDF.'; maxWeightEl.textContent=formatKg(result.maxWeight); marginEl.textContent=`${result.margin>=0?'+':''}${Math.round(result.margin).toLocaleString('pt-BR')} kg`; currentResult=result; drawOverlay(result); }
 function drawOverlay(result) { const renderableProfile=getRenderableProfile(activeProfile); if(!renderableProfile) return; const rect=chartCanvas.getBoundingClientRect(); const pageImage=renderableProfile.pageImage; if(!(pageImage.complete&&pageImage.naturalWidth)) return; const aspect=pageImage.naturalWidth/pageImage.naturalHeight; const displayWidth=Math.max(1,Math.round(rect.width||pageImage.naturalWidth)); const displayHeight=Math.max(1,Math.round(displayWidth/aspect)); const dpr=Math.max(1,window.devicePixelRatio||1); chartCanvas.width=Math.round(displayWidth*dpr); chartCanvas.height=Math.round(displayHeight*dpr); chartCanvas.style.height=`${displayHeight}px`; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,displayWidth,displayHeight); const preview = renderableProfile.render(result,{includeFooter:false,includeSummaryBox:true,compactSummaryBox:true}); if(preview) ctx.drawImage(preview,0,0,displayWidth,displayHeight); }
 function renderCompositeCanvas(result=currentResult) { const renderableProfile=getRenderableProfile(activeProfile); if(!renderableProfile) return null; return renderableProfile.render(result,{includeFooter:true,includeSummaryBox:true}); }
 function buildPdfBlobFromCanvas(canvas) { const jpegData=canvas.toDataURL('image/jpeg',0.92), base64=jpegData.split(',')[1], imageBytes=atob(base64), imgLen=imageBytes.length, pageWidth=595.28, pageHeight=pageWidth*canvas.height/canvas.width; const pdfParts=[], offsets=[]; const push=(s)=>pdfParts.push(typeof s==='string'?s:s); const offset=()=>pdfParts.reduce((n,part)=>n+(typeof part==='string'?new TextEncoder().encode(part).length:part.length),0); const bin=Uint8Array.from(imageBytes,c=>c.charCodeAt(0)); push(`%PDF-1.4
@@ -723,7 +841,21 @@ ${xrefStart}
 async function shareOrDownloadPdfFromCanvas(canvas, fileName) { const blob=buildPdfBlobFromCanvas(canvas); const file=new File([blob], fileName, {type:'application/pdf'}); if(navigator.canShare && navigator.share){ try { if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'WAC 6800 PDF', text:'PDF do cálculo documentado.'}); return; } } catch(err) { if(err?.name==='AbortError') return; } } const url=URL.createObjectURL(blob); const isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if(isiOS){ const opened=window.open(url,'_blank'); if(opened){ setTimeout(()=>URL.revokeObjectURL(url),60000); return; } } const a=document.createElement('a'); a.href=url; a.download=fileName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }
 async function exportInterpolatedPdf() { if(!activeProfile || !currentResult || currentResult.error) { alert('Rode primeiro um cálculo válido em um perfil calibrado para gerar o PDF.'); return; } const canvas=renderCompositeCanvas(currentResult); if(!canvas){ alert('A página do RFM ainda não carregou. Abra a visualização do gráfico e tente novamente.'); return; } await shareOrDownloadPdfFromCanvas(canvas, activeProfile.exportFileName); }
 function updatePdfButtonLabel() { if(navigator.canShare && navigator.share){ try { const probe=new File([new Blob(['x'],{type:'application/pdf'})],'x.pdf',{type:'application/pdf'}); if(navigator.canShare({files:[probe]})){ exportPdfBtn.textContent='Compartilhar PDF'; return; } } catch(err) {} } exportPdfBtn.textContent='Baixar PDF'; }
-function runCalculation() { syncProfileUi(); const pa=Number(paEl.value), oat=Number(oatEl.value), actualWeight=Number(weightEl.value), headwind=Number(headwindEl.value||0); if([pa,oat,actualWeight].some(Number.isNaN)){ resetPendingState(); return; } if(!activeProfile || typeof activeProfile.calculate !== 'function' || activeProfile.calculate === notCalibratedProfile){ showUncalibratedProfileState(); return; } const result = activeProfile.calculate(pa,oat,actualWeight,headwind); if(result.error){ showRangeError(result); return; } showSuccess(result, activeProfile); }
+function runCalculation() {
+  syncProfileUi();
+  const pa=Number(paEl.value), oat=Number(oatEl.value), actualWeight=Number(weightEl.value), headwind=Number(headwindEl.value||0);
+  if([pa,oat,actualWeight].some(Number.isNaN)){ resetPendingState(); return; }
+  if(!isProcedureAvailableForAircraft(procedureEl.value)){ showRangeError({ error:'Procedimento indisponível nesta build.' }); return; }
+  if(actualWeight > getAircraftMaxWeight()){ showRangeError({ error:`Peso acima do limite selecionado para a aeronave (${getAircraftMaxWeight()} kg).` }); return; }
+  if(getSelectedAircraftSet() === '7000' && (procedureEl.value === 'offshore' || procedureEl.value === 'confined') && actualWeight > 6800){
+    showRangeError({ error:'No modo aeronave 7000, Offshore/Confined foram liberados na interface, mas nesta build continuam calibrados apenas até 6800 kg. Para pesos acima disso, é preciso integrar as cartas 7000 correspondentes.' });
+    return;
+  }
+  if(!activeProfile || typeof activeProfile.calculate !== 'function' || activeProfile.calculate === notCalibratedProfile){ showUncalibratedProfileState(); return; }
+  const result = activeProfile.calculate(pa,oat,actualWeight,headwind);
+  if(result.error){ showRangeError(result); return; }
+  showSuccess(result, activeProfile);
+}
 
 toggleChart.addEventListener('click',()=>{ chartPanel.classList.toggle('hidden'); toggleChart.textContent=chartPanel.classList.contains('hidden')?'Mostrar gráfico':'Ocultar gráfico'; if(!chartPanel.classList.contains('hidden')) drawOverlay(currentResult); });
 exportPdfBtn.addEventListener('click', ()=>{ exportInterpolatedPdf(); });
@@ -731,6 +863,7 @@ demoBtn.addEventListener('click', loadDemo);
 runBtn.addEventListener('click', runCalculation);
 procedureEl.addEventListener('change', ()=>{ toggleHeadwind(); syncProfileUi(); currentResult=null; drawOverlay(); runCalculation(); });
 configurationEl.addEventListener('change', ()=>{ syncProfileUi(); currentResult=null; drawOverlay(); runCalculation(); });
+aircraftSetEls.forEach((el) => el.addEventListener('change', ()=>{ syncProfileUi(); currentResult=null; drawOverlay(); runCalculation(); }));
 window.addEventListener('beforeinstallprompt',(event)=>{ event.preventDefault(); deferredPrompt=event; installBtn.classList.remove('hidden'); });
 installBtn.addEventListener('click', async ()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; installBtn.classList.add('hidden'); });
 window.addEventListener('appinstalled', ()=>{ installBtn.classList.add('hidden'); });
@@ -997,16 +1130,22 @@ function getRenderableProfile(profile, result=currentResult) {
 }
 
 function syncProfileUi() {
+  syncProcedureOptionsForAircraft();
   activeProfile = getActiveProfile();
   const ref = activeProfile ? activeProfile.referenceHtml : '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
   chartReferenceEl.innerHTML = ref;
   chartHintEl.textContent = procedureEl.value === 'offshore'
     ? 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.'
     : 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual e peso máximo interpolado no gráfico principal.';
-  formHintEl.textContent = 'Nos perfis Confined, pesos até 6400 kg usam as cartas do Supplement 12; acima de 6400 kg usam as cartas do Supplement 50.';
+  if (getSelectedAircraftSet() === '7000') {
+    formHintEl.textContent = 'Família 7000 ativa: CAT A Clear Area e CAT B usam as cartas do Supplement 90. Offshore e Confined ficaram liberados na interface, mas nesta build seguem calibrados apenas na faixa até 6800 kg.';
+  } else {
+    formHintEl.textContent = 'Família 6800 ativa: Offshore, CAT A Clear Area, CAT B e Confined Area usam as cartas base calibradas. Nos perfis Confined, pesos até 6400 kg usam o Supplement 12; acima de 6400 kg usam o Supplement 50.';
+  }
   chartBaseImage.src = activeProfile ? activeProfile.pageSrc : 'docs/page-07.png';
   chartBaseImage.alt = activeProfile ? activeProfile.previewTitle : 'Página completa do gráfico WAT';
   updatePdfButtonLabel();
+  toggleHeadwind();
 }
 
 function calculateExactConfinedStandard(paFt,oat,actualWeightKg,headwindKt) {
@@ -1268,7 +1407,7 @@ function buildSup90ClearResult(profileId, noWind, actualWeightKg, paFt, oat, dat
 }
 
 calculateExactClearStandard = function(paFt,oat,actualWeightKg) {
-  if (actualWeightKg >= 6800) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
     const noWind = genericPdfChartNoWindLimit(SUP90_CLEAR_STANDARD_EXACT, paFt, oat, 'Figure 4-5');
     if (noWind.error) return { ...noWind, profileId: 'clear_standard', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_standard') };
     return buildSup90ClearResult('clear_standard', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_STANDARD_EXACT, CLEAR_SUP90_VARIANTS.clear_standard.figureLabel, 'Resultado calculado com a carta Clear Area Standard do Supplement 90.');
@@ -1276,7 +1415,7 @@ calculateExactClearStandard = function(paFt,oat,actualWeightKg) {
   return calculateExactClearStandard_6800(paFt,oat,actualWeightKg);
 };
 calculateExactClearEapsOff = function(paFt,oat,actualWeightKg) {
-  if (actualWeightKg >= 6800) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
     const noWind = genericPdfChartNoWindLimit(SUP90_CLEAR_EAPS_OFF_EXACT, paFt, oat, 'Figure 4-6');
     if (noWind.error) return { ...noWind, profileId: 'clear_eaps_off', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_off') };
     return buildSup90ClearResult('clear_eaps_off', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_OFF_EXACT, CLEAR_SUP90_VARIANTS.clear_eaps_off.figureLabel, 'Resultado calculado com a carta Clear Area EAPS OFF do Supplement 90.');
@@ -1284,7 +1423,7 @@ calculateExactClearEapsOff = function(paFt,oat,actualWeightKg) {
   return calculateExactClearEapsOff_6800(paFt,oat,actualWeightKg);
 };
 calculateExactClearEapsOn = function(paFt,oat,actualWeightKg) {
-  if (actualWeightKg >= 6800) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
     const noWind = genericPdfChartNoWindLimit(SUP90_CLEAR_EAPS_ON_EXACT, paFt, oat, 'Figure 4-7');
     if (noWind.error) return { ...noWind, profileId: 'clear_eaps_on', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_on') };
     return buildSup90ClearResult('clear_eaps_on', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_ON_EXACT, CLEAR_SUP90_VARIANTS.clear_eaps_on.figureLabel, 'Resultado calculado com a carta Clear Area EAPS ON do Supplement 90.');
@@ -1292,7 +1431,7 @@ calculateExactClearEapsOn = function(paFt,oat,actualWeightKg) {
   return calculateExactClearEapsOn_6800(paFt,oat,actualWeightKg);
 };
 calculateExactIbfClearArea = function(paFt,oat,actualWeightKg,headwindKt) {
-  if (actualWeightKg >= 6800) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
     const noWind = genericPdfChartNoWindLimit(SUP90_CLEAR_IBF_EXACT, paFt, oat, 'Figure 4-8');
     if (noWind.error) return { ...noWind, profileId: 'clear_ibf', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_ibf') };
     return buildSup90ClearResult('clear_ibf', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_IBF_EXACT, CLEAR_SUP90_VARIANTS.clear_ibf.figureLabel, 'Resultado calculado com a carta Clear Area IBF Installed do Supplement 90.');
@@ -1504,7 +1643,7 @@ buildSup90ClearResult = function(profileId, noWind, actualWeightKg, paFt, oat, d
 };
 
 calculateExactClearStandard = function(paFt,oat,actualWeightKg) {
-  if (actualWeightKg >= 6800) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
     const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_STANDARD_EXACT_V173, paFt, oat, 'Figure 4-5');
     if (noWind.error) return { ...noWind, profileId: 'clear_standard', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_standard') };
     return buildSup90ClearResult('clear_standard', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_STANDARD_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_standard.figureLabel, 'Resultado calculado com a carta Clear Area Standard do Supplement 90.');
@@ -1512,7 +1651,7 @@ calculateExactClearStandard = function(paFt,oat,actualWeightKg) {
   return calculateExactClearStandard_6800(paFt,oat,actualWeightKg);
 };
 calculateExactClearEapsOff = function(paFt,oat,actualWeightKg) {
-  if (actualWeightKg >= 6800) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
     const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_EAPS_OFF_EXACT_V173, paFt, oat, 'Figure 4-6');
     if (noWind.error) return { ...noWind, profileId: 'clear_eaps_off', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_off') };
     return buildSup90ClearResult('clear_eaps_off', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_OFF_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_eaps_off.figureLabel, 'Resultado calculado com a carta Clear Area EAPS OFF do Supplement 90.');
@@ -1520,7 +1659,7 @@ calculateExactClearEapsOff = function(paFt,oat,actualWeightKg) {
   return calculateExactClearEapsOff_6800(paFt,oat,actualWeightKg);
 };
 calculateExactClearEapsOn = function(paFt,oat,actualWeightKg) {
-  if (actualWeightKg >= 6800) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
     const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_EAPS_ON_EXACT_V173, paFt, oat, 'Figure 4-7');
     if (noWind.error) return { ...noWind, profileId: 'clear_eaps_on', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_on') };
     return buildSup90ClearResult('clear_eaps_on', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_ON_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_eaps_on.figureLabel, 'Resultado calculado com a carta Clear Area EAPS ON do Supplement 90.');
@@ -1528,7 +1667,7 @@ calculateExactClearEapsOn = function(paFt,oat,actualWeightKg) {
   return calculateExactClearEapsOn_6800(paFt,oat,actualWeightKg);
 };
 calculateExactIbfClearArea = function(paFt,oat,actualWeightKg,headwindKt) {
-  if (actualWeightKg >= 6800) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
     const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_IBF_EXACT_V173, paFt, oat, 'Figure 4-8');
     if (noWind.error) return { ...noWind, profileId: 'clear_ibf', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_ibf') };
     return buildSup90ClearResult('clear_ibf', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_IBF_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_ibf.figureLabel, 'Resultado calculado com a carta Clear Area IBF Installed do Supplement 90.');
@@ -1556,6 +1695,155 @@ renderClearIbfAnnotatedCanvas = function(result=currentResult, options={}) {
   if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_IBF_EXACT_V173);
   return renderClearIbfAnnotatedCanvas_6800(result, options);
 };
+
+
+
+// --- v16.8.0 structural split: CAT B profiles + aircraft 6800/7000 toggle ---
+const catbStandard7000PageImage = new Image();
+catbStandard7000PageImage.src = 'docs/page-22.png';
+const catbEapsOff7000PageImage = new Image();
+catbEapsOff7000PageImage.src = 'docs/page-23.png';
+const catbEapsOn7000PageImage = new Image();
+catbEapsOn7000PageImage.src = 'docs/page-24.png';
+const catbIbf7000PageImage = new Image();
+catbIbf7000PageImage.src = 'docs/page-25.png';
+[catbStandard7000PageImage, catbEapsOff7000PageImage, catbEapsOn7000PageImage, catbIbf7000PageImage].forEach((img)=>img.addEventListener('load',()=>{ if(activeProfile?.pageImage===img && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); }));
+
+const SUP90_CATB_STANDARD_EXACT_V180 = { figure:'Figure 4-1', pageRef:'S90-24', pageImage:'docs/page-22.png', page:{width:1240,height:1755}, main:{xMin:377,xMax:804,kgMin:6400,kgMax:7100,yTopFt:621,yBottomFt:1212,yMinFt:-1000,yMaxFt:4500}, tempCurves:{ '0': [[751,621],[751,1212]], '5': [[699,621],[751,655]], '10': [[667,651],[751,716]], '20': [[652,746],[751,812]], '30': [[658,851],[751,913]], '40': [[665,955],[751,1014]], '45': [[667,1006],[751,1058]], '50': [[624,1125],[751,1200]] }, limits:{ zeroAndBelowBoundary:[[751,621],[751,1212]], hdLimit:[[688,621],[688,1212]] }, maxExplicitTemp:50 };
+const SUP90_CATB_EAPS_OFF_EXACT_V180 = { figure:'Figure 4-2', pageRef:'S90-25', pageImage:'docs/page-23.png', page:{width:1240,height:1755}, main:{xMin:428,xMax:855,kgMin:6400,kgMax:7100,yTopFt:621,yBottomFt:1212,yMinFt:-1000,yMaxFt:4500}, tempCurves:{ '0': [[802,621],[802,1212]], '5': [[750,621],[802,655]], '10': [[719,652],[802,708]], '20': [[698,743],[802,812]], '30': [[719,859],[802,912]], '35': [[720,908],[802,966]], '40': [[683,983],[802,1045]], '45': [[675,1154],[802,1212]] }, limits:{ zeroAndBelowBoundary:[[802,621],[802,1212]], hdLimit:[[746,621],[746,1212]] }, maxExplicitTemp:45 };
+const SUP90_CATB_EAPS_ON_EXACT_V180 = { figure:'Figure 4-3', pageRef:'S90-26', pageImage:'docs/page-24.png', page:{width:1240,height:1755}, main:{xMin:363,xMax:790,kgMin:6400,kgMax:7100,yTopFt:621,yBottomFt:1212,yMinFt:-1000,yMaxFt:4500}, tempCurves:{ '0': [[737,621],[737,1212]], '5': [[686,621],[737,655]], '10': [[655,652],[737,709]], '20': [[651,755],[737,812]], '30': [[651,857],[737,913]], '35': [[612,989],[737,1057]], '40': [[609,1206],[637,1212]] }, limits:{ zeroAndBelowBoundary:[[737,621],[737,1212]], hdLimit:[[666,621],[666,1212]] }, maxExplicitTemp:40 };
+const SUP90_CATB_IBF_EXACT_V180 = { figure:'Figure 4-4', pageRef:'S90-27', pageImage:'docs/page-25.png', page:{width:1240,height:1755}, main:{xMin:442,xMax:869,kgMin:6400,kgMax:7100,yTopFt:621,yBottomFt:1212,yMinFt:-1000,yMaxFt:4500}, tempCurves:{ '0': [[816,621],[816,1212]], '5': [[764,621],[816,655]], '10': [[732,651],[816,708]], '20': [[729,755],[816,810]], '30': [[733,858],[816,911]], '35': [[703,907],[816,977]], '40': [[689,1078],[816,1160]] }, limits:{ zeroAndBelowBoundary:[[816,621],[816,1212]], hdLimit:[[744,621],[744,1212]] }, maxExplicitTemp:40 };
+
+const CATB_SUP90_VARIANTS = {
+  catb_standard: { pageSrc:'docs/page-22.png', pageImage:catbStandard7000PageImage, data:SUP90_CATB_STANDARD_EXACT_V180, figureLabel:'Figure 4-1 — Weight Limitations for CAT B Procedure.', previewTitle:'CAT B Standard - página completa do RFM (Supp 90)', supplement:'Supplement 90', page:'S90-24' },
+  catb_eaps_off: { pageSrc:'docs/page-23.png', pageImage:catbEapsOff7000PageImage, data:SUP90_CATB_EAPS_OFF_EXACT_V180, figureLabel:'Figure 4-2 — Weight Limitations for CAT B Procedure, EAPS OFF.', previewTitle:'CAT B EAPS OFF - página completa do RFM (Supp 90)', supplement:'Supplement 90', page:'S90-25' },
+  catb_eaps_on: { pageSrc:'docs/page-24.png', pageImage:catbEapsOn7000PageImage, data:SUP90_CATB_EAPS_ON_EXACT_V180, figureLabel:'Figure 4-3 — Weight Limitations for CAT B Procedure, EAPS ON.', previewTitle:'CAT B EAPS ON - página completa do RFM (Supp 90)', supplement:'Supplement 90', page:'S90-26' },
+  catb_ibf: { pageSrc:'docs/page-25.png', pageImage:catbIbf7000PageImage, data:SUP90_CATB_IBF_EXACT_V180, figureLabel:'Figure 4-4 — Weight Limitations for CAT B Procedure, IBF Installed.', previewTitle:'CAT B IBF Installed - página completa do RFM (Supp 90)', supplement:'Supplement 90', page:'S90-27' }
+};
+
+function buildCatbSup90ReferenceHtml(profileId) {
+  const variant = CATB_SUP90_VARIANTS[profileId];
+  if (!variant) return '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
+  return buildReferenceHtmlFromMeta(variant.figureLabel, { supplement: variant.supplement, page: variant.page });
+}
+
+const previousGetRenderableProfile_v1680 = getRenderableProfile;
+getRenderableProfile = function(profile, result=currentResult) {
+  if (result?.chartFamily === '7000' && CATB_SUP90_VARIANTS[profile?.id]) {
+    const variant = CATB_SUP90_VARIANTS[profile.id];
+    return { ...profile, pageSrc: variant.pageSrc, pageImage: variant.pageImage, figureLabel: variant.figureLabel, previewTitle: variant.previewTitle, referenceHtml: buildCatbSup90ReferenceHtml(profile.id) };
+  }
+  return previousGetRenderableProfile_v1680(profile, result);
+};
+
+function isaPlus35C(paFt){ return isaTemperatureC(paFt) + 35; }
+function catbCurve(data, label){ return toPoints(data.tempCurves[String(label)] || []); }
+function catbHdLimitExceeded(paFt, oatC){ return densityAltitudeFt(paFt, oatC) > 4500 + 1; }
+function catbSup90NoWindLimit(data, paFt, oat, label){
+  const pa = clamp(paFt, data.main.yMinFt, data.main.yMaxFt);
+  const paY = genericPdfChartPaToY(data, pa);
+  const isa35 = isaPlus35C(paFt);
+  if (catbHdLimitExceeded(paFt, oat)) return { error:`Hd limit 4500 ft excedido no ${label}.`, hdLimitExceeded:true, paY, isa35, densityAltitudeFt:densityAltitudeFt(paFt,oat) };
+  if (oat > isa35 + 0.01) return { error:`OAT acima do limite ISA+35° no ${label}.`, oatLimitExceeded:true, paY, isa35, densityAltitudeFt:densityAltitudeFt(paFt,oat) };
+  const explicitTemps = genericPdfChartTemps(data);
+  const maxExplicit = data.maxExplicitTemp ?? explicitTemps[explicitTemps.length - 1];
+  if (oat > maxExplicit + 0.01) return { error:`Faixa acima de ${maxExplicit}°C ainda não foi calibrada graficamente para ${label}.`, paY, isa35, densityAltitudeFt:densityAltitudeFt(paFt,oat) };
+  let lowerTemp, upperTemp, lowerCurve, upperCurve, lowerX, upperX, t;
+  if (oat <= 0) {
+    lowerTemp = 0; upperTemp = 0; lowerCurve = catbCurve(data, 0); upperCurve = lowerCurve; lowerX = upperX = xAtY(lowerCurve, paY);
+  } else {
+    const temps = explicitTemps.filter((v)=>v >= 0);
+    lowerTemp = temps[0]; upperTemp = temps[temps.length - 1];
+    for (const temp of temps) { if (temp <= oat) lowerTemp = temp; if (temp >= oat) { upperTemp = temp; break; } }
+    if (oat < temps[0]) lowerTemp = upperTemp = 0;
+    lowerCurve = catbCurve(data, lowerTemp); upperCurve = catbCurve(data, upperTemp);
+    lowerX = xAtY(lowerCurve, paY); upperX = xAtY(upperCurve, paY);
+    if (lowerTemp !== upperTemp) t = (oat - lowerTemp) / (upperTemp - lowerTemp);
+  }
+  if ([lowerX, upperX].some(v => Number.isNaN(v))) return { error:`O ponto de altitude/OAT saiu da família explícita de curvas do ${label}.`, paY, isa35, densityAltitudeFt:densityAltitudeFt(paFt,oat) };
+  const interpolatedX = (lowerTemp === upperTemp || t === undefined) ? lowerX : lowerX + clamp(t, 0, 1) * (upperX - lowerX);
+  return { paY, isa35, densityAltitudeFt:densityAltitudeFt(paFt,oat), lowerTemp, upperTemp, lowerCurve, upperCurve, lowerX, upperX, noWindX:interpolatedX, noWindKg:genericPdfChartXToKg(data, interpolatedX) };
+}
+function buildSup90CatbResult(profileId, noWind, actualWeightKg, paFt, oat, figureLabel, resultDescription) {
+  const maxWeight = roundToFive(Math.min(7000, noWind.noWindKg));
+  const margin = maxWeight - actualWeightKg;
+  return { profileId, exact:true, chartFamily:'7000', noWind, maxWeight, margin, within: margin >= 0, actualWeightKg, paFt, oat, headwindKt:0, referenceHtml: buildCatbSup90ReferenceHtml(profileId), figureLabel, resultDescription, isa35:noWind.isa35, hdValueFt:noWind.densityAltitudeFt };
+}
+
+function calculateExactCatbStandard(paFt,oat,actualWeightKg) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
+    const noWind = catbSup90NoWindLimit(SUP90_CATB_STANDARD_EXACT_V180, paFt, oat, 'Figure 4-1');
+    if (noWind.error) return { ...noWind, profileId:'catb_standard', chartFamily:'7000', referenceHtml:buildCatbSup90ReferenceHtml('catb_standard') };
+    return buildSup90CatbResult('catb_standard', noWind, actualWeightKg, paFt, oat, CATB_SUP90_VARIANTS.catb_standard.figureLabel, 'Resultado calculado com a carta CAT B Standard do Supplement 90.');
+  }
+  const result = calculateExactClearStandard_6800(paFt,oat,actualWeightKg);
+  if (result?.error) return { ...result, profileId:'catb_standard', referenceHtml:getReferenceHtmlByProfileId('catb_standard') };
+  return { ...result, profileId:'catb_standard', referenceHtml:getReferenceHtmlByProfileId('catb_standard') };
+}
+function calculateExactCatbEapsOff(paFt,oat,actualWeightKg) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
+    const noWind = catbSup90NoWindLimit(SUP90_CATB_EAPS_OFF_EXACT_V180, paFt, oat, 'Figure 4-2');
+    if (noWind.error) return { ...noWind, profileId:'catb_eaps_off', chartFamily:'7000', referenceHtml:buildCatbSup90ReferenceHtml('catb_eaps_off') };
+    return buildSup90CatbResult('catb_eaps_off', noWind, actualWeightKg, paFt, oat, CATB_SUP90_VARIANTS.catb_eaps_off.figureLabel, 'Resultado calculado com a carta CAT B EAPS OFF do Supplement 90.');
+  }
+  const result = calculateExactClearEapsOff_6800(paFt,oat,actualWeightKg);
+  if (result?.error) return { ...result, profileId:'catb_eaps_off', referenceHtml:getReferenceHtmlByProfileId('catb_eaps_off') };
+  return { ...result, profileId:'catb_eaps_off', referenceHtml:getReferenceHtmlByProfileId('catb_eaps_off') };
+}
+function calculateExactCatbEapsOn(paFt,oat,actualWeightKg) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
+    const noWind = catbSup90NoWindLimit(SUP90_CATB_EAPS_ON_EXACT_V180, paFt, oat, 'Figure 4-3');
+    if (noWind.error) return { ...noWind, profileId:'catb_eaps_on', chartFamily:'7000', referenceHtml:buildCatbSup90ReferenceHtml('catb_eaps_on') };
+    return buildSup90CatbResult('catb_eaps_on', noWind, actualWeightKg, paFt, oat, CATB_SUP90_VARIANTS.catb_eaps_on.figureLabel, 'Resultado calculado com a carta CAT B EAPS ON do Supplement 90.');
+  }
+  const result = calculateExactClearEapsOn_6800(paFt,oat,actualWeightKg);
+  if (result?.error) return { ...result, profileId:'catb_eaps_on', referenceHtml:getReferenceHtmlByProfileId('catb_eaps_on') };
+  return { ...result, profileId:'catb_eaps_on', referenceHtml:getReferenceHtmlByProfileId('catb_eaps_on') };
+}
+function calculateExactCatbIbf(paFt,oat,actualWeightKg) {
+  if (shouldUseSup90Aircraft(actualWeightKg)) {
+    const noWind = catbSup90NoWindLimit(SUP90_CATB_IBF_EXACT_V180, paFt, oat, 'Figure 4-4');
+    if (noWind.error) return { ...noWind, profileId:'catb_ibf', chartFamily:'7000', referenceHtml:buildCatbSup90ReferenceHtml('catb_ibf') };
+    return buildSup90CatbResult('catb_ibf', noWind, actualWeightKg, paFt, oat, CATB_SUP90_VARIANTS.catb_ibf.figureLabel, 'Resultado calculado com a carta CAT B IBF Installed do Supplement 90.');
+  }
+  const result = calculateExactIbfClearArea_6800(paFt,oat,actualWeightKg);
+  if (result?.error) return { ...result, profileId:'catb_ibf', referenceHtml:getReferenceHtmlByProfileId('catb_ibf') };
+  return { ...result, profileId:'catb_ibf', referenceHtml:getReferenceHtmlByProfileId('catb_ibf') };
+}
+
+function renderCatbStandardAnnotatedCanvas(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.catb_standard, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CATB_STANDARD_EXACT_V180);
+  return renderGenericNoHeadwindPdfPage(result, options, clearStandardPageImage, renderProfile, CLEAR_STANDARD_EXACT);
+}
+function renderCatbEapsOffAnnotatedCanvas(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.catb_eaps_off, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CATB_EAPS_OFF_EXACT_V180);
+  return renderGenericNoHeadwindPdfPage(result, options, clearEapsOffPageImage, renderProfile, CLEAR_EAPS_OFF_EXACT);
+}
+function renderCatbEapsOnAnnotatedCanvas(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.catb_eaps_on, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CATB_EAPS_ON_EXACT_V180);
+  return renderGenericNoHeadwindPdfPage(result, options, clearEapsOnPageImage, renderProfile, CLEAR_EAPS_ON_EXACT);
+}
+function renderCatbIbfAnnotatedCanvas(result=currentResult, options={}) {
+  const renderProfile = getRenderableProfile(PROFILE_MAP.catb_ibf, result);
+  if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CATB_IBF_EXACT_V180);
+  return renderGenericNoHeadwindPdfPage(result, options, clearIbfPageImage, renderProfile, CLEARAREA_IBF_EXACT);
+}
+
+PROFILE_MAP.catb_standard.calculate = calculateExactCatbStandard;
+PROFILE_MAP.catb_eaps_off.calculate = calculateExactCatbEapsOff;
+PROFILE_MAP.catb_eaps_on.calculate = calculateExactCatbEapsOn;
+PROFILE_MAP.catb_ibf.calculate = calculateExactCatbIbf;
+PROFILE_MAP.catb_standard.render = renderCatbStandardAnnotatedCanvas;
+PROFILE_MAP.catb_eaps_off.render = renderCatbEapsOffAnnotatedCanvas;
+PROFILE_MAP.catb_eaps_on.render = renderCatbEapsOnAnnotatedCanvas;
+PROFILE_MAP.catb_ibf.render = renderCatbIbfAnnotatedCanvas;
+PROFILE_MAP.catb_standard.referenceHtml = buildReferenceHtml(PROFILE_MAP.catb_standard);
+PROFILE_MAP.catb_eaps_off.referenceHtml = buildReferenceHtml(PROFILE_MAP.catb_eaps_off);
+PROFILE_MAP.catb_eaps_on.referenceHtml = buildReferenceHtml(PROFILE_MAP.catb_eaps_on);
+PROFILE_MAP.catb_ibf.referenceHtml = buildReferenceHtml(PROFILE_MAP.catb_ibf);
 
 
 // --- v16.7.4 hotfix: rebind PROFILE_MAP to the final v16.7.3 Sup 90 functions ---
