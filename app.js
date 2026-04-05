@@ -342,12 +342,28 @@ function getSelectedAircraftSet() {
 function getAircraftMaxWeight() {
   return getSelectedAircraftSet() === '7000' ? 7000 : 6800;
 }
-function getProcedureMaxWeight(procedure = procedureEl.value) {
-  if (getSelectedAircraftSet() !== '7000') return 6800;
-  return (procedure === 'offshore' || procedure === 'confined') ? 6800 : 7000;
+function isSup90CapableProcedure(procedure = procedureEl.value) {
+  return procedure === 'clear' || procedure === 'catb';
 }
-function shouldUseSup90Aircraft(actualWeightKg) {
-  return getSelectedAircraftSet() === '7000' && Number(actualWeightKg) > 6800;
+function shouldUseSup90ForInputs(paFt, oat, procedure = procedureEl.value) {
+  if (getSelectedAircraftSet() !== '7000') return false;
+  if (!isSup90CapableProcedure(procedure)) return false;
+  if (!Number.isFinite(paFt) || !Number.isFinite(oat)) return false;
+  if (procedure === 'clear') {
+    return !sup90HdLimitExceeded(paFt, oat) && oat <= isaPlus20C(paFt) + 0.01;
+  }
+  if (procedure === 'catb') {
+    return !catbHdLimitExceeded(paFt, oat) && oat <= isaPlus35C(paFt) + 0.01;
+  }
+  return false;
+}
+function getProcedureMaxWeight(procedure = procedureEl.value, paFt = Number(paEl?.value), oat = Number(oatEl?.value)) {
+  if (getSelectedAircraftSet() !== '7000') return 6800;
+  if (!isSup90CapableProcedure(procedure)) return 6800;
+  return shouldUseSup90ForInputs(paFt, oat, procedure) ? 7000 : 6800;
+}
+function shouldUseSup90Aircraft(actualWeightKg, paFt = Number(paEl?.value), oat = Number(oatEl?.value), procedure = procedureEl.value) {
+  return shouldUseSup90ForInputs(paFt, oat, procedure);
 }
 function isProcedureAvailableForAircraft(procedure) {
   return true;
@@ -851,11 +867,27 @@ function runCalculation() {
   if([pa,oat,actualWeight].some(Number.isNaN)){ resetPendingState(); return; }
   if(!isProcedureAvailableForAircraft(procedureEl.value)){ showRangeError({ error:'Procedimento indisponível nesta build.' }); return; }
   const aircraftMax = getAircraftMaxWeight();
-  const procedureMax = getProcedureMaxWeight(procedureEl.value);
-  if(actualWeight > aircraftMax){ showRangeError({ error:`Peso acima do limite selecionado para a aeronave (${aircraftMax} kg).` }); return; }
+  const procedureMax = getProcedureMaxWeight(procedureEl.value, pa, oat);
+  const sup90Active = shouldUseSup90ForInputs(pa, oat, procedureEl.value);
+  const label = procedureEl.value === 'offshore'
+    ? 'CAT A Offshore Helideck'
+    : procedureEl.value === 'confined'
+      ? 'CAT A Confined Area'
+      : procedureEl.value === 'clear'
+        ? 'CAT A Clear Area'
+        : procedureEl.value === 'catb'
+          ? 'CAT B'
+          : 'procedimento selecionado';
+  if(actualWeight > aircraftMax){
+    showOutOfEnvelope(aircraftMax, actualWeight, `Peso acima do limite da aeronave certificada (${aircraftMax} kg).`);
+    return;
+  }
   if(actualWeight > procedureMax){
-    const label = procedureEl.value === 'offshore' ? 'Offshore' : procedureEl.value === 'confined' ? 'Confined Area' : 'procedimento selecionado';
-    showRangeError({ error:`No perfil ${label}, o limite aplicável nesta lógica é ${procedureMax} kg. Na aeronave 7000, pesos acima de 6800 migram apenas para CAT A Clear Area e CAT B com cartas do Supplement 90.` });
+    if (getSelectedAircraftSet() === '7000' && isSup90CapableProcedure(procedureEl.value) && !sup90Active) {
+      showOutOfEnvelope(6800, actualWeight, `Condições fora dos limitantes ambientais do Supplement 90 para ${label}. Nesta condição, o app retorna para a base/Supp 50 e o limite aplicável passa a ser 6800 kg.`);
+      return;
+    }
+    showOutOfEnvelope(procedureMax, actualWeight, `Peso acima do limite aplicável para ${label} nesta condição (${procedureMax} kg).`);
     return;
   }
   if(!activeProfile || typeof activeProfile.calculate !== 'function' || activeProfile.calculate === notCalibratedProfile){ showUncalibratedProfileState(); return; }
@@ -1090,6 +1122,18 @@ function showRangeError(result) {
   if(result?.referenceHtml) chartReferenceEl.innerHTML = result.referenceHtml;
   drawOverlay(result);
 }
+function showOutOfEnvelope(maxWeightKg, actualWeightKg, message, referenceHtml = activeProfile?.referenceHtml) {
+  statusCard.className='card status out';
+  statusBadge.textContent = activeProfile?.statusBadge || 'PERFIL CALIBRADO';
+  statusTitle.textContent = 'OUT OF ENVELOPE';
+  statusText.textContent = message;
+  maxWeightEl.textContent = formatKg(maxWeightKg);
+  const margin = Number.isFinite(actualWeightKg) ? (maxWeightKg - actualWeightKg) : NaN;
+  marginEl.textContent = Number.isFinite(margin) ? `${margin>=0?'+':''}${Math.round(margin).toLocaleString('pt-BR')} kg` : '—';
+  currentResult = null;
+  if(referenceHtml) chartReferenceEl.innerHTML = referenceHtml;
+  drawOverlay();
+}
 function showSuccess(result, profile) {
   statusCard.className=`card status ${result.within ? 'within':'out'}`;
   statusBadge.textContent = profile.statusBadge || 'PERFIL CALIBRADO';
@@ -1145,7 +1189,7 @@ function syncProfileUi() {
     ? 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.'
     : 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual e peso máximo interpolado no gráfico principal.';
   if (getSelectedAircraftSet() === '7000') {
-    formHintEl.textContent = 'Família 7000 ativa: todos os perfis até 6800 kg usam a base 6800. Acima de 6800 kg, somente CAT A Clear Area e CAT B passam para as cartas do Supplement 90.';
+    formHintEl.textContent = 'Família 7000 ativa: Offshore e Confined usam a base 6800. Em CAT A Clear Area e CAT B, sempre que os limitantes ambientais do Supplement 90 forem atendidos, o app prioriza o Supp 90; fora desses limitantes, volta para a base/Supp 50 com limite de 6800 kg.';
   } else {
     formHintEl.textContent = 'Família 6800 ativa: Offshore, CAT A Clear Area, CAT B e Confined Area usam as cartas base calibradas. Nos perfis Confined, pesos até 6400 kg usam o Supplement 12; acima de 6400 kg usam o Supplement 50.';
   }
@@ -1652,7 +1696,7 @@ buildSup90ClearResult = function(profileId, noWind, actualWeightKg, paFt, oat, d
 };
 
 calculateExactClearStandard = function(paFt,oat,actualWeightKg) {
-  if (shouldUseSup90Aircraft(actualWeightKg)) {
+  if (shouldUseSup90Aircraft(actualWeightKg, paFt, oat, 'clear')) {
     const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_STANDARD_EXACT_V173, paFt, oat, 'Figure 4-5');
     if (noWind.error) return { ...noWind, profileId: 'clear_standard', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_standard') };
     return buildSup90ClearResult('clear_standard', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_STANDARD_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_standard.figureLabel, 'Resultado calculado com a carta Clear Area Standard do Supplement 90.');
@@ -1660,7 +1704,7 @@ calculateExactClearStandard = function(paFt,oat,actualWeightKg) {
   return calculateExactClearStandard_6800(paFt,oat,actualWeightKg);
 };
 calculateExactClearEapsOff = function(paFt,oat,actualWeightKg) {
-  if (shouldUseSup90Aircraft(actualWeightKg)) {
+  if (shouldUseSup90Aircraft(actualWeightKg, paFt, oat, 'clear')) {
     const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_EAPS_OFF_EXACT_V173, paFt, oat, 'Figure 4-6');
     if (noWind.error) return { ...noWind, profileId: 'clear_eaps_off', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_off') };
     return buildSup90ClearResult('clear_eaps_off', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_OFF_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_eaps_off.figureLabel, 'Resultado calculado com a carta Clear Area EAPS OFF do Supplement 90.');
@@ -1668,7 +1712,7 @@ calculateExactClearEapsOff = function(paFt,oat,actualWeightKg) {
   return calculateExactClearEapsOff_6800(paFt,oat,actualWeightKg);
 };
 calculateExactClearEapsOn = function(paFt,oat,actualWeightKg) {
-  if (shouldUseSup90Aircraft(actualWeightKg)) {
+  if (shouldUseSup90Aircraft(actualWeightKg, paFt, oat, 'clear')) {
     const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_EAPS_ON_EXACT_V173, paFt, oat, 'Figure 4-7');
     if (noWind.error) return { ...noWind, profileId: 'clear_eaps_on', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_eaps_on') };
     return buildSup90ClearResult('clear_eaps_on', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_EAPS_ON_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_eaps_on.figureLabel, 'Resultado calculado com a carta Clear Area EAPS ON do Supplement 90.');
@@ -1676,7 +1720,7 @@ calculateExactClearEapsOn = function(paFt,oat,actualWeightKg) {
   return calculateExactClearEapsOn_6800(paFt,oat,actualWeightKg);
 };
 calculateExactIbfClearArea = function(paFt,oat,actualWeightKg,headwindKt) {
-  if (shouldUseSup90Aircraft(actualWeightKg)) {
+  if (shouldUseSup90Aircraft(actualWeightKg, paFt, oat, 'clear')) {
     const noWind = sup90ClearNoWindLimit(SUP90_CLEAR_IBF_EXACT_V173, paFt, oat, 'Figure 4-8');
     if (noWind.error) return { ...noWind, profileId: 'clear_ibf', chartFamily: '7000', referenceHtml: buildClearSup90ReferenceHtml('clear_ibf') };
     return buildSup90ClearResult('clear_ibf', noWind, actualWeightKg, paFt, oat, SUP90_CLEAR_IBF_EXACT_V173, CLEAR_SUP90_VARIANTS.clear_ibf.figureLabel, 'Resultado calculado com a carta Clear Area IBF Installed do Supplement 90.');
@@ -1780,7 +1824,7 @@ function buildSup90CatbResult(profileId, noWind, actualWeightKg, paFt, oat, figu
 }
 
 function calculateExactCatbStandard(paFt,oat,actualWeightKg) {
-  if (shouldUseSup90Aircraft(actualWeightKg)) {
+  if (shouldUseSup90Aircraft(actualWeightKg, paFt, oat, 'catb')) {
     const noWind = catbSup90NoWindLimit(SUP90_CATB_STANDARD_EXACT_V181, paFt, oat, 'Figure 4-1');
     if (noWind.error) return { ...noWind, profileId:'catb_standard', chartFamily:'7000', referenceHtml:buildCatbSup90ReferenceHtml('catb_standard') };
     return buildSup90CatbResult('catb_standard', noWind, actualWeightKg, paFt, oat, CATB_SUP90_VARIANTS.catb_standard.figureLabel, 'Resultado calculado com a carta CAT B Standard do Supplement 90.');
@@ -1790,7 +1834,7 @@ function calculateExactCatbStandard(paFt,oat,actualWeightKg) {
   return { ...result, profileId:'catb_standard', referenceHtml:getReferenceHtmlByProfileId('catb_standard') };
 }
 function calculateExactCatbEapsOff(paFt,oat,actualWeightKg) {
-  if (shouldUseSup90Aircraft(actualWeightKg)) {
+  if (shouldUseSup90Aircraft(actualWeightKg, paFt, oat, 'catb')) {
     const noWind = catbSup90NoWindLimit(SUP90_CATB_EAPS_OFF_EXACT_V181, paFt, oat, 'Figure 4-2');
     if (noWind.error) return { ...noWind, profileId:'catb_eaps_off', chartFamily:'7000', referenceHtml:buildCatbSup90ReferenceHtml('catb_eaps_off') };
     return buildSup90CatbResult('catb_eaps_off', noWind, actualWeightKg, paFt, oat, CATB_SUP90_VARIANTS.catb_eaps_off.figureLabel, 'Resultado calculado com a carta CAT B EAPS OFF do Supplement 90.');
@@ -1800,7 +1844,7 @@ function calculateExactCatbEapsOff(paFt,oat,actualWeightKg) {
   return { ...result, profileId:'catb_eaps_off', referenceHtml:getReferenceHtmlByProfileId('catb_eaps_off') };
 }
 function calculateExactCatbEapsOn(paFt,oat,actualWeightKg) {
-  if (shouldUseSup90Aircraft(actualWeightKg)) {
+  if (shouldUseSup90Aircraft(actualWeightKg, paFt, oat, 'catb')) {
     const noWind = catbSup90NoWindLimit(SUP90_CATB_EAPS_ON_EXACT_V181, paFt, oat, 'Figure 4-3');
     if (noWind.error) return { ...noWind, profileId:'catb_eaps_on', chartFamily:'7000', referenceHtml:buildCatbSup90ReferenceHtml('catb_eaps_on') };
     return buildSup90CatbResult('catb_eaps_on', noWind, actualWeightKg, paFt, oat, CATB_SUP90_VARIANTS.catb_eaps_on.figureLabel, 'Resultado calculado com a carta CAT B EAPS ON do Supplement 90.');
@@ -1810,7 +1854,7 @@ function calculateExactCatbEapsOn(paFt,oat,actualWeightKg) {
   return { ...result, profileId:'catb_eaps_on', referenceHtml:getReferenceHtmlByProfileId('catb_eaps_on') };
 }
 function calculateExactCatbIbf(paFt,oat,actualWeightKg) {
-  if (shouldUseSup90Aircraft(actualWeightKg)) {
+  if (shouldUseSup90Aircraft(actualWeightKg, paFt, oat, 'catb')) {
     const noWind = catbSup90NoWindLimit(SUP90_CATB_IBF_EXACT_V181, paFt, oat, 'Figure 4-4');
     if (noWind.error) return { ...noWind, profileId:'catb_ibf', chartFamily:'7000', referenceHtml:buildCatbSup90ReferenceHtml('catb_ibf') };
     return buildSup90CatbResult('catb_ibf', noWind, actualWeightKg, paFt, oat, CATB_SUP90_VARIANTS.catb_ibf.figureLabel, 'Resultado calculado com a carta CAT B IBF Installed do Supplement 90.');

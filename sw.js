@@ -1,10 +1,10 @@
-const CACHE_NAME = 'aw139-wat-companion-v16-8-6-catb-ibf30-fix';
+const CACHE_NAME = 'aw139-wat-companion-v16-8-7-routing-env-switch';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=v16_8_6-catb-ibf30-fix',
+  './app.js?v=v16_8_7-routing-env-switch',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
@@ -48,6 +48,10 @@ const APP_ASSETS = [
   './docs/page-19.png',
   './docs/page-20.png',
   './docs/page-21.png',
+  './docs/page-22.png',
+  './docs/page-23.png',
+  './docs/page-24.png',
+  './docs/page-25.png',
   './data/sup90-cleararea-stageA.json',
   './data/sup90-clear-standard-exact.json',
   './data/sup90-clear-eapsoff-exact.json',
