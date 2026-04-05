@@ -1,10 +1,10 @@
-const CACHE_NAME = 'aw139-wat-companion-v16-9-4-offshore-enhanced-placementfix';
+const CACHE_NAME = 'aw139-wat-companion-v16-9-5-offshore-enhanced-rightnudge';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=v16_9_4-offshore-enhanced-placementfix',
+  './app.js?v=v16_9_5-offshore-enhanced-rightnudge',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',

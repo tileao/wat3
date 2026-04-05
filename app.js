@@ -2250,10 +2250,10 @@ syncProfileUi();
   }
 
   const ENHANCED_PAGE_PLACEMENTS = {
-    enhanced_standard: { offsetX: 184.985, offsetY: 255.576, scaleX: 0.699842, scaleY: 0.706507 },
-    enhanced_eaps_off: { offsetX: 184.985, offsetY: 256.589, scaleX: 0.699842, scaleY: 0.706870 },
-    enhanced_eaps_on: { offsetX: 185.009, offsetY: 255.576, scaleX: 0.700393, scaleY: 0.706507 },
-    enhanced_ibf: { offsetX: 183.968, offsetY: 255.598, scaleX: 0.701532, scaleY: 0.706507 }
+    enhanced_standard: { offsetX: 186.385, offsetY: 255.576, scaleX: 0.699842, scaleY: 0.706507 },
+    enhanced_eaps_off: { offsetX: 186.385, offsetY: 256.589, scaleX: 0.699842, scaleY: 0.706870 },
+    enhanced_eaps_on: { offsetX: 186.409, offsetY: 255.576, scaleX: 0.700393, scaleY: 0.706507 },
+    enhanced_ibf: { offsetX: 185.368, offsetY: 255.598, scaleX: 0.701532, scaleY: 0.706507 }
   };
 
   function renderEnhancedStandard(result=currentResult, options={}) { return renderGenericNoHeadwindPlacedPage(result, options, enhancedStandardPageImage, PROFILE_MAP.enhanced_standard, SUP97_ENHANCED_STANDARD_GRAPH, ENHANCED_PAGE_PLACEMENTS.enhanced_standard); }
