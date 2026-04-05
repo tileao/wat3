@@ -1,4 +1,6 @@
-Build v16.7.3
+Build v16.8.6
+
+Atualizacao v16.8.6: ajuste fino da curva 30 do CAT B IBF Installed no Supplement 90.
 
 Confined Area: Supplement 50 only.
 

@@ -1,10 +1,10 @@
-const CACHE_NAME = 'wat6800-allprofiles-v16-7-3-sup90-cleararea-fix1';
+const CACHE_NAME = 'aw139-wat-companion-v16-8-6-catb-ibf30-fix';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=allprofiles-v16_7_3-sup90-cleararea-fix1',
+  './app.js?v=v16_8_6-catb-ibf30-fix',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
