@@ -1556,3 +1556,14 @@ renderClearIbfAnnotatedCanvas = function(result=currentResult, options={}) {
   if (result?.chartFamily === '7000') return renderGenericNoHeadwindPdfPage(result, options, renderProfile.pageImage, renderProfile, SUP90_CLEAR_IBF_EXACT_V173);
   return renderClearIbfAnnotatedCanvas_6800(result, options);
 };
+
+
+// --- v16.7.4 hotfix: rebind PROFILE_MAP to the final v16.7.3 Sup 90 functions ---
+PROFILE_MAP.clear_standard.calculate = calculateExactClearStandard;
+PROFILE_MAP.clear_eaps_off.calculate = calculateExactClearEapsOff;
+PROFILE_MAP.clear_eaps_on.calculate = calculateExactClearEapsOn;
+PROFILE_MAP.clear_ibf.calculate = calculateExactIbfClearArea;
+PROFILE_MAP.clear_standard.render = renderClearStandardAnnotatedCanvas;
+PROFILE_MAP.clear_eaps_off.render = renderClearEapsOffAnnotatedCanvas;
+PROFILE_MAP.clear_eaps_on.render = renderClearEapsOnAnnotatedCanvas;
+PROFILE_MAP.clear_ibf.render = renderClearIbfAnnotatedCanvas;
