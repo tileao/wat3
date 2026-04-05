@@ -1864,3 +1864,73 @@ PROFILE_MAP.clear_standard.render = renderClearStandardAnnotatedCanvas;
 PROFILE_MAP.clear_eaps_off.render = renderClearEapsOffAnnotatedCanvas;
 PROFILE_MAP.clear_eaps_on.render = renderClearEapsOnAnnotatedCanvas;
 PROFILE_MAP.clear_ibf.render = renderClearIbfAnnotatedCanvas;
+
+
+// --- v16.8.3 UI cleanup: operational labels aligned with 6800/7000 routing ---
+function applyOperationalUiLabels_v1683() {
+  const is7000 = getSelectedAircraftSet() === '7000';
+  Array.from(procedureEl.options).forEach((option) => {
+    if (option.value === 'offshore') option.textContent = is7000 ? 'CAT A Offshore Enhanced' : 'CAT A Offshore Helideck';
+    if (option.value === 'clear') option.textContent = 'CAT A Clear Area';
+    if (option.value === 'catb') option.textContent = 'CAT B';
+    if (option.value === 'confined') option.textContent = 'CAT A Confined Area';
+  });
+}
+
+function applyProfileTextCleanup_v1683() {
+  const clearProfiles = ['clear_standard','clear_eaps_off','clear_eaps_on','clear_ibf'];
+  clearProfiles.forEach((id) => {
+    const profile = PROFILE_MAP[id];
+    if (!profile) return;
+    profile.procedureLabel = 'CAT A Clear Area';
+  });
+  if (PROFILE_MAP.clear_standard) {
+    PROFILE_MAP.clear_standard.previewTitle = 'CAT A Clear Area Standard - página completa do RFM';
+    PROFILE_MAP.clear_standard.resultDescription = 'Resultado calculado com base nas curvas vetoriais do Figure 4-1 para CAT A Clear Area.';
+  }
+  if (PROFILE_MAP.clear_eaps_off) {
+    PROFILE_MAP.clear_eaps_off.previewTitle = 'CAT A Clear Area EAPS OFF - página completa do RFM';
+    PROFILE_MAP.clear_eaps_off.resultDescription = 'Resultado calculado com base nas curvas vetoriais do Figure 4-2 para CAT A Clear Area, EAPS OFF.';
+  }
+  if (PROFILE_MAP.clear_eaps_on) {
+    PROFILE_MAP.clear_eaps_on.previewTitle = 'CAT A Clear Area EAPS ON - página completa do RFM';
+    PROFILE_MAP.clear_eaps_on.resultDescription = 'Resultado calculado com base nas curvas vetoriais do Figure 4-3 para CAT A Clear Area, EAPS ON.';
+  }
+  if (PROFILE_MAP.clear_ibf) {
+    PROFILE_MAP.clear_ibf.previewTitle = 'CAT A Clear Area IBF Installed - página completa do RFM';
+    PROFILE_MAP.clear_ibf.resultDescription = 'Resultado calculado com base nas curvas vetoriais do Figure 4-9A para CAT A Clear Area, IBF Installed.';
+  }
+  const confinedProfiles = ['confined_standard','confined_eaps_off','confined_eaps_on','confined_ibf'];
+  confinedProfiles.forEach((id) => {
+    const profile = PROFILE_MAP[id];
+    if (!profile) return;
+    profile.procedureLabel = 'CAT A Confined Area';
+  });
+  if (PROFILE_MAP.confined_standard) PROFILE_MAP.confined_standard.previewTitle = 'CAT A Confined Area Standard - página completa do RFM';
+  if (PROFILE_MAP.confined_eaps_off) PROFILE_MAP.confined_eaps_off.previewTitle = 'CAT A Confined Area EAPS OFF - página completa do RFM';
+  if (PROFILE_MAP.confined_eaps_on) PROFILE_MAP.confined_eaps_on.previewTitle = 'CAT A Confined Area EAPS ON - página completa do RFM';
+  if (PROFILE_MAP.confined_ibf) PROFILE_MAP.confined_ibf.previewTitle = 'CAT A Confined Area IBF Installed - página completa do RFM';
+  const offshoreProfiles = ['offshore_standard','offshore_eaps_off','offshore_eaps_on','offshore_ibf'];
+  offshoreProfiles.forEach((id) => {
+    const profile = PROFILE_MAP[id];
+    if (!profile) return;
+    profile.procedureLabel = 'CAT A Offshore Helideck';
+  });
+  PROFILE_MAP.catb_standard.procedureLabel = 'CAT B';
+  PROFILE_MAP.catb_eaps_off.procedureLabel = 'CAT B';
+  PROFILE_MAP.catb_eaps_on.procedureLabel = 'CAT B';
+  PROFILE_MAP.catb_ibf.procedureLabel = 'CAT B';
+}
+
+applyProfileTextCleanup_v1683();
+
+const syncProfileUi_v1683 = syncProfileUi;
+syncProfileUi = function() {
+  syncProfileUi_v1683();
+  applyOperationalUiLabels_v1683();
+  formHintEl.textContent = getSelectedAircraftSet() === '7000'
+    ? 'Aeronave 7000: até 6800 kg o app usa a base 6800 em todos os perfis. Acima de 6800 kg, somente CAT A Clear Area e CAT B usam o Supp 90.'
+    : 'Aeronave 6800: todos os perfis usam as cartas base de 6800; nos perfis CAT A Confined, até 6400 kg entra o Supp 12 e acima disso o Supp 50.';
+};
+
+syncProfileUi();
