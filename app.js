@@ -1978,3 +1978,382 @@ syncProfileUi = function() {
 };
 
 syncProfileUi();
+
+
+// --- v16.9.1 Offshore Enhanced (Supplement 97) - graph-based calculation with table cross-check ---
+(function(){
+  function ensureEnhancedProcedureOption() {
+    if (procedureEl.querySelector('option[value="enhanced"]')) return;
+    const opt = document.createElement('option');
+    opt.value = 'enhanced';
+    opt.textContent = 'CAT A Offshore Enhanced';
+    const offshoreOpt = procedureEl.querySelector('option[value="offshore"]');
+    if (offshoreOpt && offshoreOpt.nextSibling) procedureEl.insertBefore(opt, offshoreOpt.nextSibling);
+    else procedureEl.appendChild(opt);
+  }
+  ensureEnhancedProcedureOption();
+
+  const enhancedStandardPageImage = new Image();
+  enhancedStandardPageImage.src = 'docs/page-26.png';
+  const enhancedEapsOffPageImage = new Image();
+  enhancedEapsOffPageImage.src = 'docs/page-28.png';
+  const enhancedEapsOnPageImage = new Image();
+  enhancedEapsOnPageImage.src = 'docs/page-30.png';
+  const enhancedIbfPageImage = new Image();
+  enhancedIbfPageImage.src = 'docs/page-32.png';
+  [enhancedStandardPageImage, enhancedEapsOffPageImage, enhancedEapsOnPageImage, enhancedIbfPageImage].forEach((img)=>img.addEventListener('load',()=>{ if(activeProfile?.pageImage===img && !chartPanel.classList.contains('hidden')) drawOverlay(currentResult); }));
+
+  const SUP97_ENHANCED_STANDARD_GRAPH = {"page":{"width":1240,"height":1755},"main":{"xMin":358.1,"xMax":991.0,"kgMin":5300,"kgMax":7100,"yTopFt":610.6,"yBottomFt":1326.8,"yMinFt":-1000,"yMaxFt":1000},"tempCurves":{"0":[[955.8,1326.8],[955.8,610.6]],"10":[[955.8,1326.8],[955.8,932.5],[954.4,896.8],[953.2,875.9],[952.0,855.0],[950.8,834.1],[949.6,813.3],[948.4,792.4],[947.2,771.5],[946.0,750.6],[944.9,729.8],[943.6,708.9],[942.4,688.0],[941.1,667.1],[939.9,646.2],[937.7,610.6]],"20":[[955.8,1326.8],[955.8,1290.4],[955.1,1254.7],[953.9,1233.9],[952.7,1213.0],[951.5,1192.1],[950.3,1171.2],[949.1,1150.4],[947.9,1129.5],[946.7,1108.6],[945.5,1087.7],[944.3,1066.8],[943.2,1046.0],[942.0,1025.1],[940.9,1004.2],[938.8,968.5],[936.7,932.5],[935.5,911.6],[934.2,890.7],[933.0,869.8],[931.7,848.9],[930.4,828.1],[929.1,807.2],[927.8,786.3],[926.5,765.4],[925.2,744.6],[923.9,723.7],[922.6,702.8],[921.4,681.9],[919.3,646.2],[917.1,610.6]],"30":[[940.2,1326.8],[940.2,1326.5],[937.1,1272.8],[933.9,1219.0],[930.7,1165.3],[927.4,1111.6],[924.2,1057.9],[920.9,1004.2],[917.6,950.5],[914.2,896.8],[910.9,843.1],[907.5,789.4],[904.2,735.6],[900.8,681.9],[898.3,646.2],[893.3,610.6]],"40":[[920.7,1326.8],[920.7,1326.5],[919.8,1311.6],[918.9,1296.6],[918.0,1281.7],[917.1,1266.8],[916.3,1251.8],[915.4,1236.9],[914.5,1221.9],[913.6,1207.0],[912.7,1192.1],[911.7,1177.2],[910.7,1162.2],[909.7,1147.3],[907.5,1111.6],[898.7,1075.6],[889.9,1039.8],[881.1,1004.1],[872.4,968.3],[863.8,932.5],[855.1,896.7],[846.5,861.0],[837.8,825.2],[829.2,789.4],[820.6,753.6],[811.9,717.8],[803.3,682.0],[794.6,646.2],[786.1,610.6]],"50":[[826.6,1326.8],[826.6,1326.5],[820.0,1299.7],[813.4,1272.8],[807.0,1246.0],[800.5,1219.2],[794.1,1192.3],[787.7,1165.5],[781.4,1138.6],[775.0,1111.7],[768.7,1084.9],[762.4,1058.0],[756.1,1031.1],[749.9,1004.2],[741.7,968.5]]}};
+  const SUP97_ENHANCED_EAPS_OFF_GRAPH = {"page":{"width":1240,"height":1755},"main":{"xMin":358.1,"xMax":991.0,"kgMin":5300,"kgMax":7100,"yTopFt":616.2,"yBottomFt":1332.5,"yMinFt":-1000,"yMaxFt":1000},"tempCurves":{"0":[[955.8,1332.5],[955.8,616.2]],"10":[[955.8,1332.5],[955.8,938.1],[954.4,902.4],[953.1,881.5],[951.9,860.7],[950.7,839.8],[949.6,818.9],[948.4,798.0],[947.2,777.1],[946.0,756.3],[944.8,735.4],[943.6,714.5],[942.4,693.6],[941.1,672.8],[939.8,651.9],[937.7,616.2]],"20":[[955.8,1332.5],[955.8,1296.1],[955.1,1260.4],[953.9,1239.5],[952.7,1218.6],[951.5,1197.8],[950.3,1176.9],[949.1,1156.0],[947.9,1135.1],[946.7,1114.2],[945.5,1093.3],[944.3,1072.5],[943.2,1051.6],[942.0,1030.7],[940.9,1009.8],[938.8,974.2],[936.6,938.1],[935.4,917.2],[934.2,896.3],[932.9,875.5],[931.7,854.6],[930.4,833.7],[929.1,812.8],[927.8,792.0],[926.5,771.1],[925.2,750.2],[923.9,729.3],[922.6,708.4],[921.3,687.6],[919.2,651.9],[917.1,616.2]],"30":[[940.2,1332.5],[940.2,1332.1],[938.4,1302.3],[936.6,1272.5],[934.8,1242.6],[933.1,1212.8],[931.3,1183.0],[929.6,1153.1],[927.8,1123.3],[926.0,1093.4],[924.2,1063.6],[922.4,1033.8],[920.5,1004.0],[918.5,974.2],[916.0,938.1],[907.1,902.4],[901.9,881.5],[896.6,860.7],[891.4,839.8],[886.2,818.9],[880.9,798.1],[875.7,777.2],[870.6,756.3],[865.4,735.4],[860.2,714.5],[855.0,693.7],[849.8,672.8],[844.6,651.9],[835.8,616.2]],"40":[[902.2,1332.5],[902.2,1332.1],[888.5,1275.5],[874.9,1218.8],[861.3,1162.1],[847.8,1105.5],[834.2,1048.8],[820.7,992.1],[807.2,935.4],[793.7,878.7],[780.3,822.0],[766.9,765.3],[753.5,708.6],[740.2,651.9],[731.7,616.2]],"50":[[758.0,1332.5],[758.0,1332.1],[751.0,1305.2],[744.1,1278.4],[737.2,1251.5],[730.3,1224.6],[723.4,1197.7],[716.5,1170.8],[709.5,1143.9],[702.5,1117.0],[695.4,1090.2],[688.2,1063.4],[680.9,1036.6],[673.5,1009.8],[663.2,974.2]]}};
+  const SUP97_ENHANCED_EAPS_ON_GRAPH = {"page":{"width":1240,"height":1755},"main":{"xMin":358.5,"xMax":991.0,"kgMin":4900,"kgMax":7100,"yTopFt":610.6,"yBottomFt":1326.8,"yMinFt":-1000,"yMaxFt":1000},"tempCurves":{"0":[[962.2,1326.8],[962.2,610.6]],"10":[[962.2,1326.8],[962.2,932.5],[960.8,896.8],[959.9,875.9],[959.0,855.0],[958.0,834.1],[957.1,813.3],[956.1,792.4],[955.2,771.5],[954.2,750.6],[953.2,729.7],[952.2,708.9],[951.2,688.0],[950.1,667.1],[949.1,646.2],[947.3,610.6]],"20":[[962.2,1326.8],[962.2,1290.4],[961.5,1254.7],[961.0,1239.8],[960.3,1224.9],[959.7,1210.0],[958.9,1195.0],[958.2,1180.1],[957.4,1165.2],[956.7,1150.2],[955.9,1135.3],[955.2,1120.4],[954.5,1105.5],[953.9,1090.5],[953.3,1075.6],[951.6,1039.9],[949.8,1004.2],[949.0,986.3],[948.2,968.4],[947.3,950.5],[946.5,932.6],[945.7,914.7],[944.8,896.8],[943.9,878.9],[943.1,861.0],[942.2,843.1],[941.3,825.2],[940.4,807.3],[939.5,789.4],[937.7,753.7],[935.9,717.6],[929.9,681.9],[922.8,646.2],[915.3,610.6]],"30":[[949.4,1326.8],[949.4,1326.5],[947.7,1290.4],[944.1,1219.1],[939.1,1183.0],[931.7,1147.3],[923.3,1105.6],[914.9,1063.8],[906.6,1022.1],[898.2,980.4],[889.9,938.6],[881.6,896.9],[873.3,855.1],[865.1,813.3],[856.8,771.6],[848.6,729.8],[840.4,688.0],[832.2,646.2],[825.5,610.6]],"40":[[864.9,1326.8],[864.9,1326.5],[854.0,1269.8],[843.0,1213.2],[832.1,1156.5],[821.2,1099.8],[810.3,1043.1],[799.5,986.4],[788.7,929.8],[777.9,873.1],[767.1,816.4],[756.3,759.7],[745.6,703.0],[734.9,646.2],[728.2,610.6]],"50":[[467.5,1326.8],[467.2,1326.5],[461.2,1299.7],[455.3,1272.9],[449.4,1246.1],[443.5,1219.3],[437.8,1192.5],[432.1,1165.7],[426.5,1138.9],[421.0,1112.0],[415.7,1085.1],[410.5,1058.2],[405.5,1031.2],[400.7,1004.2],[394.7,968.5]]}};
+  const SUP97_ENHANCED_IBF_GRAPH = {"page":{"width":1240,"height":1755},"main":{"xMin":338.6,"xMax":971.5,"kgMin":5300,"kgMax":7100,"yTopFt":610.6,"yBottomFt":1326.8,"yMinFt":-1000,"yMaxFt":1000},"tempCurves":{"0":[[936.3,1326.8],[936.3,610.6]],"10":[[936.3,1326.8],[936.3,932.5],[934.9,896.8],[933.6,875.9],[932.4,855.0],[931.2,834.1],[930.0,813.3],[928.9,792.4],[927.7,771.5],[926.5,750.6],[925.3,729.8],[924.1,708.9],[922.9,688.0],[921.6,667.1],[920.3,646.2],[918.2,610.6]],"20":[[936.3,1326.8],[936.3,1290.4],[935.6,1254.7],[934.4,1233.9],[933.2,1213.0],[932.0,1192.1],[930.8,1171.2],[929.6,1150.4],[928.4,1129.5],[927.2,1108.6],[926.0,1087.7],[924.8,1066.8],[923.6,1046.0],[922.5,1025.1],[921.4,1004.2],[919.2,968.5],[917.1,932.5],[915.9,911.6],[914.7,890.7],[913.4,869.8],[912.2,848.9],[910.9,828.1],[909.6,807.2],[908.3,786.3],[907.0,765.4],[905.7,744.6],[904.4,723.7],[903.1,702.8],[901.8,681.9],[899.7,646.2],[895.8,610.6]],"30":[[920.7,1326.8],[920.7,1326.5],[919.8,1311.6],[918.9,1296.6],[918.0,1281.7],[917.1,1266.8],[916.2,1251.8],[915.3,1236.9],[914.5,1222.0],[913.6,1207.0],[912.7,1192.1],[911.8,1177.2],[910.9,1162.3],[910.0,1147.3],[907.9,1111.6],[900.1,1075.6],[891.3,1039.8],[882.5,1004.0],[873.7,968.3],[864.9,932.5],[856.1,896.7],[847.2,860.9],[838.4,825.2],[829.6,789.4],[820.8,753.6],[812.1,717.8],[803.3,682.0],[794.6,646.2],[786.1,610.6]],"40":[[853.9,1326.8],[853.9,1326.5],[840.4,1269.8],[826.9,1213.2],[813.5,1156.5],[800.1,1099.8],[786.6,1043.1],[773.3,986.5],[759.9,929.8],[746.5,873.1],[733.2,816.4],[719.9,759.7],[706.6,703.0],[693.4,646.2],[685.2,610.6]],"50":[[561.6,1326.8],[561.6,1326.5],[555.4,1299.6],[549.2,1272.8],[543.0,1245.9],[536.8,1219.0],[530.7,1192.1],[524.5,1165.3],[518.3,1138.4],[512.1,1111.5],[505.9,1084.7],[499.5,1057.8],[493.2,1031.0],[486.7,1004.2],[478.2,968.5]]}};
+
+  const ENHANCED_TEMPS = [-40,-30,-20,-10,0,10,20,30,40,50];
+  const ENHANCED_HP = [-1000,-500,0,500,1000];
+  const ENHANCED_STANDARD_TABLE = {
+    hp: ENHANCED_HP,
+    oat: ENHANCED_TEMPS,
+    values: {
+      '-1000':[7000,7000,7000,7000,7000,7000,7000,6956,6901,6632],
+      '-500':[7000,7000,7000,7000,7000,7000,6981,6926,6869,6510],
+      '0':[7000,7000,7000,7000,7000,7000,6952,6895,6763,6392],
+      '500':[7000,7000,7000,7000,7000,6979,6921,6863,6640,null],
+      '1000':[7000,7000,7000,7000,7000,6949,6890,6822,null,null]
+    }
+  };
+  const ENHANCED_EAPS_OFF_TABLE = {
+    hp: ENHANCED_HP,
+    oat: ENHANCED_TEMPS,
+    values: {
+      '-1000':[7000,7000,7000,7000,7000,7000,7000,6956,6848,6438],
+      '-500':[7000,7000,7000,7000,7000,7000,6981,6926,6725,6306],
+      '0':[7000,7000,7000,7000,7000,7000,6952,6895,6604,6167],
+      '500':[7000,7000,7000,7000,7000,6979,6921,6785,6483,null],
+      '1000':[7000,7000,7000,7000,7000,6949,6890,6659,null,null]
+    }
+  };
+  const ENHANCED_EAPS_ON_TABLE = {
+    hp: ENHANCED_HP,
+    oat: ENHANCED_TEMPS,
+    values: {
+      '-1000':[7000,7000,7000,7000,7000,7000,7000,6956,6662,5279],
+      '-500':[7000,7000,7000,7000,7000,7000,6981,6895,6542,5143],
+      '0':[7000,7000,7000,7000,7000,7000,6952,6769,6423,5027],
+      '500':[7000,7000,7000,7000,7000,6979,6921,6646,6304,null],
+      '1000':[7000,7000,7000,7000,7000,6949,6838,6525,null,null]
+    }
+  };
+  const ENHANCED_IBF_TABLE = {
+    hp: ENHANCED_HP,
+    oat: ENHANCED_TEMPS,
+    values: {
+      '-1000':[7000,7000,7000,7000,7000,7000,7000,6956,6766,5934],
+      '-500':[7000,7000,7000,7000,7000,7000,6981,6926,6645,5817],
+      '0':[7000,7000,7000,7000,7000,7000,6952,6822,6524,5696],
+      '500':[7000,7000,7000,7000,7000,6979,6921,6697,6404,null],
+      '1000':[7000,7000,7000,7000,7000,6949,6885,6573,null,null]
+    }
+  };
+
+  const ENHANCED_VARIANTS = {
+    enhanced_standard: {
+      graphData: SUP97_ENHANCED_STANDARD_GRAPH,
+      table: ENHANCED_STANDARD_TABLE,
+      pageSrc: 'docs/page-26.png',
+      pageImage: enhancedStandardPageImage,
+      exportFileName: 'wat-enhanced-offshore-standard.pdf',
+      previewTitle: 'CAT A Offshore Enhanced Standard - página completa do RFM (Supp 97)',
+      procedureLabel: 'CAT A Offshore Enhanced',
+      configLabel: 'Standard',
+      figureLabel: 'Figure 4-1 — Enhanced Offshore Helideck Procedure Take-Off Weight Limitations.',
+      tableFigureLabel: 'Figure 4-2 — Enhanced Offshore Helideck Procedure Take-Off Weight Limitations Table.',
+      supplement: 'Supplement 97',
+      graphPage: 'S97-25',
+      tablePage: 'S97-26',
+      resultDescription: 'Resultado calculado pela família de curvas extraídas do vetorial do PDF do Supplement 97, com conferência da tabela da mesma página/par.'
+    },
+    enhanced_eaps_off: {
+      graphData: SUP97_ENHANCED_EAPS_OFF_GRAPH,
+      table: ENHANCED_EAPS_OFF_TABLE,
+      pageSrc: 'docs/page-28.png',
+      pageImage: enhancedEapsOffPageImage,
+      exportFileName: 'wat-enhanced-offshore-eaps-off.pdf',
+      previewTitle: 'CAT A Offshore Enhanced EAPS OFF - página completa do RFM (Supp 97)',
+      procedureLabel: 'CAT A Offshore Enhanced',
+      configLabel: 'EAPS OFF',
+      figureLabel: 'Figure 4-3 — Enhanced Offshore Helideck Take-Off Procedure Weight Limitations, EAPS OFF.',
+      tableFigureLabel: 'Figure 4-4 — Enhanced Offshore Helideck Take-Off Procedure Weight Limitations Table, EAPS OFF.',
+      supplement: 'Supplement 97',
+      graphPage: 'S97-27',
+      tablePage: 'S97-28',
+      resultDescription: 'Resultado calculado pela família de curvas extraídas do vetorial do PDF do Supplement 97, com conferência da tabela correspondente do EAPS OFF.'
+    },
+    enhanced_eaps_on: {
+      graphData: SUP97_ENHANCED_EAPS_ON_GRAPH,
+      table: ENHANCED_EAPS_ON_TABLE,
+      pageSrc: 'docs/page-30.png',
+      pageImage: enhancedEapsOnPageImage,
+      exportFileName: 'wat-enhanced-offshore-eaps-on.pdf',
+      previewTitle: 'CAT A Offshore Enhanced EAPS ON - página completa do RFM (Supp 97)',
+      procedureLabel: 'CAT A Offshore Enhanced',
+      configLabel: 'EAPS ON',
+      figureLabel: 'Figure 4-5 — Enhanced Offshore Helideck Take-Off Procedure Weight Limitations, EAPS ON.',
+      tableFigureLabel: 'Figure 4-6 — Enhanced Offshore Helideck Take-Off Procedure Weight Limitations Table, EAPS ON.',
+      supplement: 'Supplement 97',
+      graphPage: 'S97-29',
+      tablePage: 'S97-30',
+      resultDescription: 'Resultado calculado pela família de curvas extraídas do vetorial do PDF do Supplement 97, com conferência da tabela correspondente do EAPS ON.'
+    },
+    enhanced_ibf: {
+      graphData: SUP97_ENHANCED_IBF_GRAPH,
+      table: ENHANCED_IBF_TABLE,
+      pageSrc: 'docs/page-32.png',
+      pageImage: enhancedIbfPageImage,
+      exportFileName: 'wat-enhanced-offshore-ibf.pdf',
+      previewTitle: 'CAT A Offshore Enhanced IBF Installed - página completa do RFM (Supp 97)',
+      procedureLabel: 'CAT A Offshore Enhanced',
+      configLabel: 'IBF Installed',
+      figureLabel: 'Figure 4-7 — Enhanced Offshore Helideck Take-Off Procedure Weight Limitations, IBF Installed.',
+      tableFigureLabel: 'Figure 4-8 — Enhanced Offshore Helideck Take-Off Procedure Weight Limitations Table, IBF Installed.',
+      supplement: 'Supplement 97',
+      graphPage: 'S97-31',
+      tablePage: 'S97-32',
+      resultDescription: 'Resultado calculado pela família de curvas extraídas do vetorial do PDF do Supplement 97, com conferência da tabela correspondente do IBF Installed.'
+    }
+  };
+
+  function buildEnhancedReferenceHtml(profileId) {
+    const variant = ENHANCED_VARIANTS[profileId];
+    if (!variant) return '<strong>Gráfico em uso:</strong> perfil ainda não calibrado.<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.';
+    return `<strong>Gráfico em uso:</strong> ${variant.figureLabel}<br><strong>Cálculo primário:</strong> curvas extraídas do vetorial do PDF do Supplement 97<br><strong>Tabela de conferência:</strong> ${variant.tableFigureLabel}<br><strong>Suplemento:</strong> ${variant.supplement}<br><strong>Páginas:</strong> ${variant.graphPage} / ${variant.tablePage}<br><strong>Fonte:</strong> Leonardo AW139 Rotorcraft Flight Manual (RFM), Ed. 2, Rev. 32.`;
+  }
+
+  function getEnhancedTableValue(table, hp, oat) {
+    const row = table.values[String(hp)] || [];
+    const idx = table.oat.indexOf(oat);
+    return idx >= 0 ? row[idx] : null;
+  }
+
+  function findBounds(list, value) {
+    let lower = list[0];
+    let upper = list[list.length - 1];
+    for (const item of list) {
+      if (item <= value) lower = item;
+      if (item >= value) { upper = item; break; }
+    }
+    return { lower, upper };
+  }
+
+  function interpolate1D(x0, x1, y0, y1, x) {
+    if (x1 === x0) return y0;
+    return y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
+  }
+
+  function interpolateEnhancedTable(table, paFt, oat, label) {
+    if (paFt < table.hp[0] - 0.01 || paFt > table.hp[table.hp.length - 1] + 0.01) {
+      return { error: `Pressure Altitude fora da tabela do ${label} (${table.hp[0]} ft a ${table.hp[table.hp.length - 1]} ft).` };
+    }
+    if (oat < table.oat[0] - 0.01 || oat > table.oat[table.oat.length - 1] + 0.01) {
+      return { error: `OAT fora da tabela do ${label} (${table.oat[0]}°C a ${table.oat[table.oat.length - 1]}°C).` };
+    }
+    const hpBounds = findBounds(table.hp, paFt);
+    const oatBounds = findBounds(table.oat, oat);
+    const ll = getEnhancedTableValue(table, hpBounds.lower, oatBounds.lower);
+    const lu = getEnhancedTableValue(table, hpBounds.lower, oatBounds.upper);
+    const ul = getEnhancedTableValue(table, hpBounds.upper, oatBounds.lower);
+    const uu = getEnhancedTableValue(table, hpBounds.upper, oatBounds.upper);
+    const missingError = `Ponto acima do MAX OAT LIMIT / fora da área tabelada do ${label}.`;
+    let rawKg;
+    if (hpBounds.lower === hpBounds.upper && oatBounds.lower === oatBounds.upper) {
+      if (!Number.isFinite(ll)) return { error: missingError };
+      rawKg = ll;
+    } else if (hpBounds.lower === hpBounds.upper) {
+      if (!Number.isFinite(ll) || !Number.isFinite(lu)) return { error: missingError };
+      rawKg = interpolate1D(oatBounds.lower, oatBounds.upper, ll, lu, oat);
+    } else if (oatBounds.lower === oatBounds.upper) {
+      if (!Number.isFinite(ll) || !Number.isFinite(ul)) return { error: missingError };
+      rawKg = interpolate1D(hpBounds.lower, hpBounds.upper, ll, ul, paFt);
+    } else {
+      if (![ll, lu, ul, uu].every(Number.isFinite)) return { error: missingError };
+      const fLower = interpolate1D(oatBounds.lower, oatBounds.upper, ll, lu, oat);
+      const fUpper = interpolate1D(oatBounds.lower, oatBounds.upper, ul, uu, oat);
+      rawKg = interpolate1D(hpBounds.lower, hpBounds.upper, fLower, fUpper, paFt);
+    }
+    return {
+      rawKg,
+      hpLower: hpBounds.lower,
+      hpUpper: hpBounds.upper,
+      oatLower: oatBounds.lower,
+      oatUpper: oatBounds.upper,
+      ll, lu, ul, uu
+    };
+  }
+
+  function buildEnhancedResult(profileId, paFt, oat, actualWeightKg, graphResult, tableResult) {
+    const variant = ENHANCED_VARIANTS[profileId];
+    const aircraftCap = getAircraftMaxWeight();
+    const rawMaxWeight = roundToFive(Math.min(7000, graphResult.noWindKg));
+    const maxWeight = roundToFive(Math.min(rawMaxWeight, aircraftCap));
+    const graphData = variant.graphData;
+    const noWind = {
+      ...graphResult,
+      noWindKg: maxWeight,
+      noWindX: genericPdfChartKgToX(graphData, maxWeight),
+      tableInterpolation: tableResult || null
+    };
+    const margin = maxWeight - actualWeightKg;
+    const cappedText = aircraftCap < rawMaxWeight ? ` Resultado do Supplement 97 limitado a ${aircraftCap} kg pela aeronave selecionada.` : '';
+    const deltaText = tableResult && Number.isFinite(tableResult.rawKg)
+      ? ` Diferença gráfico x tabela: ${Math.round((rawMaxWeight - tableResult.rawKg) * 10) / 10} kg.`
+      : '';
+    return {
+      profileId,
+      exact: true,
+      chartFamily: 'enhanced97',
+      noWind,
+      rawMaxWeight,
+      maxWeight,
+      margin,
+      within: margin >= 0,
+      actualWeightKg,
+      paFt,
+      oat,
+      headwindKt: 0,
+      referenceHtml: buildEnhancedReferenceHtml(profileId),
+      figureLabel: variant.figureLabel,
+      resultDescription: `${variant.resultDescription}${cappedText}${deltaText}`
+    };
+  }
+
+  function calculateEnhancedFromGraph(profileId, paFt, oat, actualWeightKg, label) {
+    const variant = ENHANCED_VARIANTS[profileId];
+    const graphOat = Math.max(0, oat);
+    const graphResult = genericPdfChartNoWindLimit(variant.graphData, paFt, graphOat, label);
+    if (graphResult.error) return { ...graphResult, profileId, referenceHtml: buildEnhancedReferenceHtml(profileId) };
+    graphResult.requestedOat = oat;
+    graphResult.graphOat = graphOat;
+    const tableCheck = interpolateEnhancedTable(variant.table, paFt, oat, label);
+    return buildEnhancedResult(profileId, paFt, oat, actualWeightKg, graphResult, tableCheck.error ? null : tableCheck);
+  }
+
+  function calculateEnhancedStandard(paFt, oat, actualWeightKg) {
+    return calculateEnhancedFromGraph('enhanced_standard', paFt, oat, actualWeightKg, 'CAT A Offshore Enhanced Standard');
+  }
+  function calculateEnhancedEapsOff(paFt, oat, actualWeightKg) {
+    return calculateEnhancedFromGraph('enhanced_eaps_off', paFt, oat, actualWeightKg, 'CAT A Offshore Enhanced EAPS OFF');
+  }
+  function calculateEnhancedEapsOn(paFt, oat, actualWeightKg) {
+    return calculateEnhancedFromGraph('enhanced_eaps_on', paFt, oat, actualWeightKg, 'CAT A Offshore Enhanced EAPS ON');
+  }
+  function calculateEnhancedIbf(paFt, oat, actualWeightKg) {
+    return calculateEnhancedFromGraph('enhanced_ibf', paFt, oat, actualWeightKg, 'CAT A Offshore Enhanced IBF Installed');
+  }
+
+  const ENHANCED_PAGE_PLACEMENTS = {
+    enhanced_standard: { offsetX: 184.985, offsetY: 255.576, scaleX: 0.699842, scaleY: 0.706507 },
+    enhanced_eaps_off: { offsetX: 184.985, offsetY: 256.589, scaleX: 0.699842, scaleY: 0.706870 },
+    enhanced_eaps_on: { offsetX: 185.009, offsetY: 255.576, scaleX: 0.700393, scaleY: 0.706507 },
+    enhanced_ibf: { offsetX: 183.968, offsetY: 255.598, scaleX: 0.701532, scaleY: 0.706507 }
+  };
+
+  function renderEnhancedStandard(result=currentResult, options={}) { return renderGenericNoHeadwindPlacedPage(result, options, enhancedStandardPageImage, PROFILE_MAP.enhanced_standard, SUP97_ENHANCED_STANDARD_GRAPH, ENHANCED_PAGE_PLACEMENTS.enhanced_standard); }
+  function renderEnhancedEapsOff(result=currentResult, options={}) { return renderGenericNoHeadwindPlacedPage(result, options, enhancedEapsOffPageImage, PROFILE_MAP.enhanced_eaps_off, SUP97_ENHANCED_EAPS_OFF_GRAPH, ENHANCED_PAGE_PLACEMENTS.enhanced_eaps_off); }
+  function renderEnhancedEapsOn(result=currentResult, options={}) { return renderGenericNoHeadwindPlacedPage(result, options, enhancedEapsOnPageImage, PROFILE_MAP.enhanced_eaps_on, SUP97_ENHANCED_EAPS_ON_GRAPH, ENHANCED_PAGE_PLACEMENTS.enhanced_eaps_on); }
+  function renderEnhancedIbf(result=currentResult, options={}) { return renderGenericNoHeadwindPlacedPage(result, options, enhancedIbfPageImage, PROFILE_MAP.enhanced_ibf, SUP97_ENHANCED_IBF_GRAPH, ENHANCED_PAGE_PLACEMENTS.enhanced_ibf); }
+
+  PROFILE_MAP.enhanced_standard = {
+    id: 'enhanced_standard',
+    pageSrc: ENHANCED_VARIANTS.enhanced_standard.pageSrc,
+    pageImage: ENHANCED_VARIANTS.enhanced_standard.pageImage,
+    exportFileName: ENHANCED_VARIANTS.enhanced_standard.exportFileName,
+    previewTitle: ENHANCED_VARIANTS.enhanced_standard.previewTitle,
+    procedureLabel: ENHANCED_VARIANTS.enhanced_standard.procedureLabel,
+    configLabel: ENHANCED_VARIANTS.enhanced_standard.configLabel,
+    figureLabel: ENHANCED_VARIANTS.enhanced_standard.figureLabel,
+    calculate: calculateEnhancedStandard,
+    render: renderEnhancedStandard,
+    statusBadge: 'SUPP 97 ENHANCED STD',
+    resultDescription: ENHANCED_VARIANTS.enhanced_standard.resultDescription,
+    referenceHtml: buildEnhancedReferenceHtml('enhanced_standard')
+  };
+  PROFILE_MAP.enhanced_eaps_off = {
+    id: 'enhanced_eaps_off',
+    pageSrc: ENHANCED_VARIANTS.enhanced_eaps_off.pageSrc,
+    pageImage: ENHANCED_VARIANTS.enhanced_eaps_off.pageImage,
+    exportFileName: ENHANCED_VARIANTS.enhanced_eaps_off.exportFileName,
+    previewTitle: ENHANCED_VARIANTS.enhanced_eaps_off.previewTitle,
+    procedureLabel: ENHANCED_VARIANTS.enhanced_eaps_off.procedureLabel,
+    configLabel: ENHANCED_VARIANTS.enhanced_eaps_off.configLabel,
+    figureLabel: ENHANCED_VARIANTS.enhanced_eaps_off.figureLabel,
+    calculate: calculateEnhancedEapsOff,
+    render: renderEnhancedEapsOff,
+    statusBadge: 'SUPP 97 ENHANCED EAPS OFF',
+    resultDescription: ENHANCED_VARIANTS.enhanced_eaps_off.resultDescription,
+    referenceHtml: buildEnhancedReferenceHtml('enhanced_eaps_off')
+  };
+  PROFILE_MAP.enhanced_eaps_on = {
+    id: 'enhanced_eaps_on',
+    pageSrc: ENHANCED_VARIANTS.enhanced_eaps_on.pageSrc,
+    pageImage: ENHANCED_VARIANTS.enhanced_eaps_on.pageImage,
+    exportFileName: ENHANCED_VARIANTS.enhanced_eaps_on.exportFileName,
+    previewTitle: ENHANCED_VARIANTS.enhanced_eaps_on.previewTitle,
+    procedureLabel: ENHANCED_VARIANTS.enhanced_eaps_on.procedureLabel,
+    configLabel: ENHANCED_VARIANTS.enhanced_eaps_on.configLabel,
+    figureLabel: ENHANCED_VARIANTS.enhanced_eaps_on.figureLabel,
+    calculate: calculateEnhancedEapsOn,
+    render: renderEnhancedEapsOn,
+    statusBadge: 'SUPP 97 ENHANCED EAPS ON',
+    resultDescription: ENHANCED_VARIANTS.enhanced_eaps_on.resultDescription,
+    referenceHtml: buildEnhancedReferenceHtml('enhanced_eaps_on')
+  };
+  PROFILE_MAP.enhanced_ibf = {
+    id: 'enhanced_ibf',
+    pageSrc: ENHANCED_VARIANTS.enhanced_ibf.pageSrc,
+    pageImage: ENHANCED_VARIANTS.enhanced_ibf.pageImage,
+    exportFileName: ENHANCED_VARIANTS.enhanced_ibf.exportFileName,
+    previewTitle: ENHANCED_VARIANTS.enhanced_ibf.previewTitle,
+    procedureLabel: ENHANCED_VARIANTS.enhanced_ibf.procedureLabel,
+    configLabel: ENHANCED_VARIANTS.enhanced_ibf.configLabel,
+    figureLabel: ENHANCED_VARIANTS.enhanced_ibf.figureLabel,
+    calculate: calculateEnhancedIbf,
+    render: renderEnhancedIbf,
+    statusBadge: 'SUPP 97 ENHANCED IBF',
+    resultDescription: ENHANCED_VARIANTS.enhanced_ibf.resultDescription,
+    referenceHtml: buildEnhancedReferenceHtml('enhanced_ibf')
+  };
+
+  const getProcedureMaxWeight_v1690 = getProcedureMaxWeight;
+  getProcedureMaxWeight = function(procedure = procedureEl.value, paFt = Number(paEl?.value), oat = Number(oatEl?.value)) {
+    if (procedure === 'enhanced') return 7000;
+    return getProcedureMaxWeight_v1690(procedure, paFt, oat);
+  };
+
+  const syncProcedureOptionsForAircraft_v1690 = syncProcedureOptionsForAircraft;
+  syncProcedureOptionsForAircraft = function() {
+    syncProcedureOptionsForAircraft_v1690();
+    Array.from(procedureEl.options).forEach((option) => {
+      option.disabled = false;
+      if (option.value === 'offshore') option.textContent = 'CAT A Offshore Helideck';
+      if (option.value === 'enhanced') option.textContent = 'CAT A Offshore Enhanced';
+      if (option.value === 'clear') option.textContent = 'CAT A Clear Area';
+      if (option.value === 'catb') option.textContent = 'CAT B';
+      if (option.value === 'confined') option.textContent = 'CAT A Confined Area';
+    });
+  };
+
+  const syncProfileUi_v1690 = syncProfileUi;
+  syncProfileUi = function() {
+    syncProfileUi_v1690();
+    const is7000 = getSelectedAircraftSet() === '7000';
+    formHintEl.textContent = is7000
+      ? 'Aeronave 7000: Offshore Helideck e Confined usam a base 6800. CAT A Offshore Enhanced usa o Supplement 97 até 7000 kg. CAT A Clear Area e CAT B usam o Supplement 90 quando os limitantes forem atendidos.'
+      : 'Aeronave 6800: todos os perfis continuam disponíveis. No CAT A Offshore Enhanced, o Supplement 97 é usado para o cálculo, mas o resultado final é limitado a 6800 kg.';
+    activeProfile = getActiveProfile();
+    if (activeProfile?.referenceHtml) chartReferenceEl.innerHTML = activeProfile.referenceHtml;
+    chartBaseImage.src = activeProfile ? activeProfile.pageSrc : 'docs/page-07.png';
+    chartBaseImage.alt = activeProfile ? activeProfile.previewTitle : 'Página completa do gráfico WAT';
+  };
+
+  // refresh initial UI after adding the new procedure
+  syncProfileUi();
+})();

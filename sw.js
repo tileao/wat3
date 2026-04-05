@@ -1,10 +1,10 @@
-const CACHE_NAME = 'aw139-wat-companion-v16-8-7-routing-env-switch';
+const CACHE_NAME = 'aw139-wat-companion-v16-9-4-offshore-enhanced-placementfix';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=v16_8_7-routing-env-switch',
+  './app.js?v=v16_9_4-offshore-enhanced-placementfix',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
@@ -52,6 +52,15 @@ const APP_ASSETS = [
   './docs/page-23.png',
   './docs/page-24.png',
   './docs/page-25.png',
+  './docs/WAT enhanced.pdf',
+  './docs/page-26.png',
+  './docs/page-27.png',
+  './docs/page-28.png',
+  './docs/page-29.png',
+  './docs/page-30.png',
+  './docs/page-31.png',
+  './docs/page-32.png',
+  './docs/page-33.png',
   './data/sup90-cleararea-stageA.json',
   './data/sup90-clear-standard-exact.json',
   './data/sup90-clear-eapsoff-exact.json',
