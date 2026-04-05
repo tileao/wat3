@@ -1983,13 +1983,23 @@ syncProfileUi();
 // --- v16.9.1 Offshore Enhanced (Supplement 97) - graph-based calculation with table cross-check ---
 (function(){
   function ensureEnhancedProcedureOption() {
-    if (procedureEl.querySelector('option[value="enhanced"]')) return;
-    const opt = document.createElement('option');
-    opt.value = 'enhanced';
-    opt.textContent = 'CAT A Offshore Enhanced';
-    const offshoreOpt = procedureEl.querySelector('option[value="offshore"]');
-    if (offshoreOpt && offshoreOpt.nextSibling) procedureEl.insertBefore(opt, offshoreOpt.nextSibling);
-    else procedureEl.appendChild(opt);
+    const enhancedOptions = Array.from(procedureEl.querySelectorAll('option[value="enhanced"]'));
+    if (enhancedOptions.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = 'enhanced';
+      opt.textContent = 'CAT A Offshore Enhanced';
+      const offshoreOpt = procedureEl.querySelector('option[value="offshore"]');
+      if (offshoreOpt && offshoreOpt.nextSibling) procedureEl.insertBefore(opt, offshoreOpt.nextSibling);
+      else procedureEl.appendChild(opt);
+      return;
+    }
+    const keeper = enhancedOptions[0];
+    keeper.textContent = 'CAT A Offshore Enhanced';
+    enhancedOptions.slice(1).forEach((opt) => {
+      const wasSelected = opt.selected;
+      opt.remove();
+      if (wasSelected) keeper.selected = true;
+    });
   }
   ensureEnhancedProcedureOption();
 

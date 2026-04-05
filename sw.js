@@ -1,10 +1,10 @@
-const CACHE_NAME = 'aw139-wat-companion-v16-9-5-offshore-enhanced-rightnudge';
+const CACHE_NAME = 'aw139-wat-companion-v16-9-6-enhanced-dedupe-fix';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './app.js?v=v16_9_5-offshore-enhanced-rightnudge',
+  './app.js?v=v16_9_6-enhanced-dedupe-fix',
   './manifest.webmanifest',
   './README.md',
   './data/chart-schema.json',
