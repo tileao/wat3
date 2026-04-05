@@ -342,8 +342,12 @@ function getSelectedAircraftSet() {
 function getAircraftMaxWeight() {
   return getSelectedAircraftSet() === '7000' ? 7000 : 6800;
 }
+function getProcedureMaxWeight(procedure = procedureEl.value) {
+  if (getSelectedAircraftSet() !== '7000') return 6800;
+  return (procedure === 'offshore' || procedure === 'confined') ? 6800 : 7000;
+}
 function shouldUseSup90Aircraft(actualWeightKg) {
-  return getSelectedAircraftSet() === '7000' && Number(actualWeightKg) >= 6800;
+  return getSelectedAircraftSet() === '7000' && Number(actualWeightKg) > 6800;
 }
 function isProcedureAvailableForAircraft(procedure) {
   return true;
@@ -397,7 +401,7 @@ paNegativeBtn?.addEventListener('click', () => { toggleSignedInput(paEl, 5); });
 oatNegativeBtn?.addEventListener('click', () => { toggleSignedInput(oatEl, 2); });
 
 function toggleHeadwind() {
-  const offshore = procedureEl.value === 'offshore' && getSelectedAircraftSet() === '6800';
+  const offshore = procedureEl.value === 'offshore';
   headwindWrap.classList.toggle('hidden', !offshore);
   headwindEl.disabled = !offshore;
   if (!offshore) headwindEl.value = '';
@@ -846,9 +850,12 @@ function runCalculation() {
   const pa=Number(paEl.value), oat=Number(oatEl.value), actualWeight=Number(weightEl.value), headwind=Number(headwindEl.value||0);
   if([pa,oat,actualWeight].some(Number.isNaN)){ resetPendingState(); return; }
   if(!isProcedureAvailableForAircraft(procedureEl.value)){ showRangeError({ error:'Procedimento indisponível nesta build.' }); return; }
-  if(actualWeight > getAircraftMaxWeight()){ showRangeError({ error:`Peso acima do limite selecionado para a aeronave (${getAircraftMaxWeight()} kg).` }); return; }
-  if(getSelectedAircraftSet() === '7000' && (procedureEl.value === 'offshore' || procedureEl.value === 'confined') && actualWeight > 6800){
-    showRangeError({ error:'No modo aeronave 7000, Offshore/Confined foram liberados na interface, mas nesta build continuam calibrados apenas até 6800 kg. Para pesos acima disso, é preciso integrar as cartas 7000 correspondentes.' });
+  const aircraftMax = getAircraftMaxWeight();
+  const procedureMax = getProcedureMaxWeight(procedureEl.value);
+  if(actualWeight > aircraftMax){ showRangeError({ error:`Peso acima do limite selecionado para a aeronave (${aircraftMax} kg).` }); return; }
+  if(actualWeight > procedureMax){
+    const label = procedureEl.value === 'offshore' ? 'Offshore' : procedureEl.value === 'confined' ? 'Confined Area' : 'procedimento selecionado';
+    showRangeError({ error:`No perfil ${label}, o limite aplicável nesta lógica é ${procedureMax} kg. Na aeronave 7000, pesos acima de 6800 migram apenas para CAT A Clear Area e CAT B com cartas do Supplement 90.` });
     return;
   }
   if(!activeProfile || typeof activeProfile.calculate !== 'function' || activeProfile.calculate === notCalibratedProfile){ showUncalibratedProfileState(); return; }
@@ -1138,7 +1145,7 @@ function syncProfileUi() {
     ? 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual, ponto sem vento e resultado final com headwind.'
     : 'Overlay direto sobre a página completa do RFM: altitude, curvas de temperatura, peso atual e peso máximo interpolado no gráfico principal.';
   if (getSelectedAircraftSet() === '7000') {
-    formHintEl.textContent = 'Família 7000 ativa: CAT A Clear Area e CAT B usam as cartas do Supplement 90. Offshore e Confined ficaram liberados na interface, mas nesta build seguem calibrados apenas na faixa até 6800 kg.';
+    formHintEl.textContent = 'Família 7000 ativa: todos os perfis até 6800 kg usam a base 6800. Acima de 6800 kg, somente CAT A Clear Area e CAT B passam para as cartas do Supplement 90.';
   } else {
     formHintEl.textContent = 'Família 6800 ativa: Offshore, CAT A Clear Area, CAT B e Confined Area usam as cartas base calibradas. Nos perfis Confined, pesos até 6400 kg usam o Supplement 12; acima de 6400 kg usam o Supplement 50.';
   }
@@ -1477,7 +1484,9 @@ PROFILE_MAP.clear_ibf.render = renderClearIbfAnnotatedCanvas;
 const syncProfileUi_v1672 = syncProfileUi;
 syncProfileUi = function() {
   syncProfileUi_v1672();
-  formHintEl.textContent = 'WAT: até 6800 kg usam as cartas originais de 6800; Clear Area acima de 6800 kg usa o Supplement 90 (7000 kg).';
+  formHintEl.textContent = getSelectedAircraftSet() === '7000'
+    ? 'WAT 7000: até 6800 kg o app usa as cartas base de 6800 em todos os perfis. Acima de 6800 kg, CAT A Clear Area e CAT B usam o Supplement 90.'
+    : 'WAT 6800: todos os perfis usam as cartas base de 6800.';
 };
 
 syncProfileUi();

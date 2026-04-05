@@ -14,8 +14,8 @@
       <div>
         <p class="eyebrow">AW139</p>
         <h1>AW139 WAT Companion</h1>
-        <p class="subtitle">Envelope check estrutural para famílias 6800 e 7000</p>
-        <p class="build-version">Build v16.8.1</p>
+        <p class="subtitle">Envelope check estrutural com roteamento por peso para 6800 e 7000</p>
+        <p class="build-version">Build v16.8.2</p>
       </div>
       <button id="installBtn" class="ghost hidden">Instalar</button>
     </header>
@@ -96,7 +96,7 @@
         <button id="runBtn" class="primary">Check Envelope</button>
         <button id="demoBtn" class="ghost">Carregar demo</button>
       </div>
-      <p id="formHint" class="hint">Selecione a família WAT 6800 ou 7000. No 7000, Clear Area e CAT B usam Supp 90; Offshore e Confined ficam liberados para a faixa calibrada atual.</p>
+      <p id="formHint" class="hint">Selecione a família WAT 6800 ou 7000. No 7000, todos os perfis usam a base 6800 até 6800 kg; acima disso, apenas CAT A Clear Area e CAT B migram para o Supp 90.</p>
     </section>
 
     <section id="statusCard" class="card status neutral">
@@ -155,6 +155,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=v16_8_1-aircraft-7000-offshore-confined-unlock" defer></script>
+  <script src="app.js?v=v16_8_2-aircraft-routing-by-weight" defer></script>
 </body>
 </html>
